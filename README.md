@@ -35,7 +35,7 @@ Cloudflare Workers Builds should use `npm ci --workspaces=false` as its install 
 
 ## Cloudflare setup
 
-Deployment is intentionally blocked by `npm run deploy:verify` while configuration is incomplete. The repository currently contains an unconfigured D1 ID, Access issuer/audience, admin email allowlist and public Turnstile key. No remote configuration, domain binding or live verification is implied by a passing local build.
+Deployment is intentionally blocked by `npm run deploy:verify` while configuration is incomplete or verification has not been acknowledged. D1, Access, admin allowlist and public Turnstile values are configured in `wrangler.toml`; passing local checks confirms their presence, not the state of remote services, domain bindings or live forms.
 
 Before deployment, verify:
 
@@ -46,6 +46,8 @@ Before deployment, verify:
 - Both custom domains/DNS bindings and the Workers Builds connection to **hligon35/perverseworld**, branch `main`.
 
 Use `npm run deploy` as the connected deployment command. Wrangler's custom build also runs the guard when Cloudflare sets `WORKERS_CI=1`, blocking even the default Workers Builds deployment command until verification is acknowledged. The [Cloudflare build environment documentation](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#default-variables) describes this variable. Disable any other automatic release pipelines until configuration is verified. Direct local `wrangler deploy` bypasses the npm deployment guard and must not be used before verification. The acknowledgement below records the operator's remote verification; the guard itself does not inspect Cloudflare account state. Do not commit secrets.
+
+The guard accepts the nonsecret acknowledgement `CLOUDFLARE_CONFIGURATION_VERIFIED=true` from the process environment, an untracked root `.env` (loaded for local commands), or `[vars]` in `wrangler.toml`, in that order. An explicitly set process value, including `false` or an empty value, overrides file values. For Cloudflare, process variables belong under **Settings > Build > Build variables and secrets**; **Settings > Variables & Secrets** configures the deployed Worker runtime and does not by itself set the build process environment. Your local `.env` is intentionally ignored by Git and is not uploaded to Cloudflare. No secret values are printed by the guard.
 
 ```bash
 npm run db:remote
