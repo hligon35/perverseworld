@@ -23,11 +23,29 @@ async function verifyAccess(r,e){
  const sig=Uint8Array.from(b64(parts[2]),x=>x.charCodeAt(0));
  return await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,sig,new TextEncoder().encode(parts[0]+'.'+parts[1]))?email:null;
 }
-async function captcha(r,e,t){
- if(!e.TURNSTILE_SECRET||!t)return false;
- const form=new FormData();form.set('secret',e.TURNSTILE_SECRET);form.set('response',t);form.set('remoteip',r.headers.get('cf-connecting-ip')||'');
- const x=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body:form});
- return x.ok&&(await x.json()).success===true;
+// Turnstile tokens are single-use and must be verified server-side on each form submission.
+// Cloudflare's response must also match the domain and the intended form action.
+async function captcha(r,e,t,expectedAction){
+ if(!e.TURNSTILE_SECRET||!e.TURNSTILE_SITE_KEY) return {ok:false,misconfigured:true};
+ if(typeof t!=='string'||t.length<1||t.length>2048)return {ok:false};
+ const form=new FormData();
+ form.set('secret',e.TURNSTILE_SECRET);
+ form.set('response',t);
+ const ip=r.headers.get('cf-connecting-ip');
+ if(ip)form.set('remoteip',ip);
+ try{
+  const response=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body:form,signal:AbortSignal.timeout(8000)});
+  if(!response.ok)return {ok:false};
+  const result=await response.json();
+  const hostname=clean(result.hostname,255).toLowerCase();
+  const allowedHosts=new Set([new URL(e.PUBLIC_BASE_URL).hostname.toLowerCase()]);
+  // Explicit local development support. Never accept unrelated production hostnames.
+  if(e.TURNSTILE_ALLOW_LOCALHOST==='true')allowedHosts.add('localhost');
+  return {ok:result.success===true&&allowedHosts.has(hostname)&&result.action===expectedAction};
+ }catch(error){
+  console.error('Turnstile verification unavailable',error);
+  return {ok:false};
+ }
 }
 function product(row){let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}catch{}return {id:row.id,name:row.name,sub:row.description,cat:row.category,price:row.price_cents/100,img:row.image_url,tag:row.badge,sizes,active:!!row.active}}
 function productInput(b){
@@ -48,7 +66,9 @@ async function publicAPI(r,e,path){
  if(r.method==='POST'&&path==='/api/newsletter/subscribe'){
   const b=await parse(r);if(b.website)return json({ok:true});
   const email=clean(b.email,254).toLowerCase();if(!emailOK(email))return fail('Enter a valid email');
-  if(!await captcha(r,e,b.turnstileToken))return fail('Verification is required',403);
+  const verification=await captcha(r,e,b.turnstileToken,'newsletter');
+  if(verification.misconfigured)return fail('Form verification is not configured',503);
+  if(!verification.ok)return fail('Turnstile verification failed. Please try again.',403);
   await d.prepare("INSERT INTO subscribers(email,unsub_token,status) VALUES(?,?,'active') ON CONFLICT(email) DO UPDATE SET status='active',consent_at=CURRENT_TIMESTAMP").bind(email,token()).run();
   return json({ok:true});
  }
@@ -56,7 +76,9 @@ async function publicAPI(r,e,path){
   const b=await parse(r);if(b.website)return json({ok:true});
   const name=clean(b.name,120),email=clean(b.email,254).toLowerCase(),subject=clean(b.subject,160),message=clean(b.message,4000);
   if(!name||!emailOK(email)||!subject||!message)return fail('Fill in all required fields');
-  if(!await captcha(r,e,b.turnstileToken))return fail('Verification is required',403);
+  const verification=await captcha(r,e,b.turnstileToken,'contact');
+  if(verification.misconfigured)return fail('Form verification is not configured',503);
+  if(!verification.ok)return fail('Turnstile verification failed. Please try again.',403);
   await d.prepare('INSERT INTO submissions(name,email,subject,message) VALUES(?,?,?,?)').bind(name,email,subject,message).run();
   return json({ok:true});
  }
