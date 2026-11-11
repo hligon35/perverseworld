@@ -143,6 +143,9 @@ export default {
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
     return publicAPI(r,e,path);
    }
+   if(r.method==='GET' && ['/shop','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact'].includes(path)) {
+    return e.ASSETS.fetch(new Request(new URL('/index.html',url),r));
+   }
    return e.ASSETS.fetch(r);
   }catch(err){console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}
  },
