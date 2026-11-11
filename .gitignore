@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+*.log
+*.ipa
+*.apk
+*.aab
+.DS_Store
