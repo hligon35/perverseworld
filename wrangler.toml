@@ -24,15 +24,15 @@ custom_domain = true
 [[d1_databases]]
 binding = "DB"
 database_name = "perverse-world-production"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "8a56b510-00a9-49b8-88fd-17e01c870f08"
 migrations_dir = "migrations"
 
 [vars]
 PUBLIC_BASE_URL = "https://perverseworld.com"
-TURNSTILE_SITE_KEY = "" # Cloudflare Turnstile public site key; configure before launch
-ADMIN_ACCESS_ISSUER = "https://REPLACE_TEAM.cloudflareaccess.com"
-ADMIN_ACCESS_AUD = "REPLACE_WITH_ACCESS_APPLICATION_AUD"
-ADMIN_ALLOWED_EMAILS = ""
+TURNSTILE_SITE_KEY = "0x4AAAAAAF9YFQ6JV7lvo3O1" # Cloudflare Turnstile public site key; configure before launch
+ADMIN_ACCESS_ISSUER = "https://getsparqd-server.cloudflareaccess.com"
+ADMIN_ACCESS_AUD = "6c39d5ff7d617d01bc753b79432667e179e1c904839531fa7d013c374a827f28"
+ADMIN_ALLOWED_EMAILS = "hligon@getsparqd.com"
 INBOUND_DOMAIN = "perverseworld.com"
 FROM_EMAIL = "updates@perverseworld.com"
 MAILBOX_FROM_EMAIL = "support@perverseworld.com"
