@@ -24,6 +24,7 @@ migrations_dir = "migrations"
 
 [vars]
 PUBLIC_BASE_URL = "https://perverseworld.com"
+TURNSTILE_SITE_KEY = "" # Cloudflare Turnstile public site key; configure before launch
 ADMIN_ACCESS_ISSUER = "https://REPLACE_TEAM.cloudflareaccess.com"
 ADMIN_ACCESS_AUD = "REPLACE_WITH_ACCESS_APPLICATION_AUD"
 ADMIN_ALLOWED_EMAILS = ""
