@@ -1,0 +1,32 @@
+name = "perverse-world"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/admin", "/admin/*", "/unsubscribe"]
+
+[[routes]]
+pattern = "perverseworld.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.perverseworld.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "perverse-world-production"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+PUBLIC_BASE_URL = "https://perverseworld.com"
+ADMIN_ACCESS_ISSUER = "https://REPLACE_TEAM.cloudflareaccess.com"
+ADMIN_ACCESS_AUD = "REPLACE_WITH_ACCESS_APPLICATION_AUD"
+ADMIN_ALLOWED_EMAILS = ""
+INBOUND_DOMAIN = "perverseworld.com"
+FROM_EMAIL = "updates@perverseworld.com"
+MAILBOX_FROM_EMAIL = "support@perverseworld.com"
