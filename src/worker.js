@@ -122,11 +122,6 @@ async function adminAPI(r,e,path,identity){
  }
  return fail('Not found',404);
 }
-// Brand presentation is injected into HTML responses only, keeping product imagery unchanged.
-async function withBrandUi(response) {
- if (!response.ok || !String(response.headers.get('content-type')||'').toLowerCase().includes('text/html')) return response;
- return new HTMLRewriter().on('head', {element(head){head.append('<script src="/brand-ui.js" defer></script>',{html:true});}}).transform(response);
-}
 export default {
  async fetch(r,e){
   const url=new URL(r.url),path=url.pathname;
@@ -142,13 +137,13 @@ export default {
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
     if(path.startsWith('/api/admin/'))return adminAPI(r,e,path,identity);
     if(r.method!=='GET')return fail('Method not allowed',405);
-    return withBrandUi(await e.ASSETS.fetch(new Request(new URL('/admin/index.html',url),r)));
+    return e.ASSETS.fetch(new Request(new URL('/admin/index.html',url),r));
    }
    if(path.startsWith('/api/')){
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
     return publicAPI(r,e,path);
    }
-   return withBrandUi(await e.ASSETS.fetch(r));
+   return e.ASSETS.fetch(r);
   }catch(err){console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}
  },
  async email(message,e){
