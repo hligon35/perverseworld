@@ -7,9 +7,11 @@
     "apps/mobile"
   ],
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
-    "check": "node --check src/worker.js && node --check public/storefront-api.js && node --check public/site-pages.js && node --check public/brand-ui.js && node --test tests/*.test.mjs",
+    "dev": "node scripts/build.mjs && wrangler dev",
+    "deploy": "npm run deploy:verify && npm run build && wrangler deploy",
+    "deploy:verify": "node scripts/verify-deploy.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "node scripts/build.mjs && node --check src/worker.js && node --check public/assets/js/storefront.js && node --check public/assets/js/forms.js && node --check public/brand-ui.js && node --test tests/*.test.mjs",
     "db:create": "wrangler d1 create perverse-world-production",
     "db:local": "wrangler d1 migrations apply perverse-world-production --local",
     "db:remote": "wrangler d1 migrations apply perverse-world-production --remote",

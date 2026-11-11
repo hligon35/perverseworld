@@ -3,10 +3,15 @@ main = "src/worker.js"
 compatibility_date = "2026-11-01"
 workers_dev = true
 
+[build]
+command = "node scripts/prepare-worker.mjs"
+
 [assets]
-directory = "./public"
+directory = "./dist"
 binding = "ASSETS"
-run_worker_first = ["/api/*", "/admin", "/admin/*", "/unsubscribe", "/shop", "/collections", "/collections/*", "/about", "/contact"]
+run_worker_first = ["/api/*", "/admin", "/admin/*", "/unsubscribe"]
+html_handling = "drop-trailing-slash"
+not_found_handling = "404-page"
 
 [[routes]]
 pattern = "perverseworld.com"

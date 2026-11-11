@@ -1,0 +1,23 @@
+.pw-contact{background:#181a16;color:#eee9db;padding:70px 24px;border-top:1px solid #34362f}
+.pw-contact-inner{max-width:850px;margin:auto}
+.pw-kicker{color:#ef4b2c;font:800 14px var(--cond);letter-spacing:3px}
+.pw-contact p{color:#aaa}
+.pw-contact form{display:grid;gap:15px;margin-top:28px}
+.pw-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.pw-contact label{font:700 13px var(--body);text-transform:uppercase;letter-spacing:1px;display:grid;gap:8px}
+.pw-contact input,.pw-contact textarea{width:100%;padding:15px;background:#101210;border:1px solid #52534b;color:white;font:16px var(--body)}
+.pw-contact button{background:#ef4b2c;color:#101210;padding:17px;border:0;font:bold 19px var(--cond);cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
+.pw-honey{position:absolute;left:-9999px}
+#newsletter-challenge{display:flex;justify-content:center;margin-top:18px}
+.catalog-note{text-align:center;margin-top:35px;font-size:11px;color:#999a90}
+.announcement-symbol{padding:0 13px}
+.newsletter-kicker{font:900 15px var(--cond);letter-spacing:3px}
+.collection-copy .kicker{color:#bc4229}
+#modalPrice{font:900 26px var(--cond)}
+.size-label{font:800 13px var(--cond);letter-spacing:1.5px}
+.pw-home-intro{padding-bottom:0}
+.pw-home-intro+#shop{padding-top:15px}
+.collection-banner{margin:40px clamp(22px,5vw,90px) 70px}
+.menu-mobile:not(.open){visibility:hidden}
+@media(max-width:600px){.pw-grid{grid-template-columns:1fr}}

@@ -22,18 +22,37 @@ test('unconfigured mailbox is not publicly exposed',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/api/admin/mailbox'),base);
  assert.equal(res.status,503);
 });
-test('dedicated storefront URLs resolve to the branded index',async()=>{
- for(const pathname of ['/shop','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact']){
+test('dedicated storefront URLs pass through to their own static document',async()=>{
+ for(const pathname of ['/','/shop','/shop/','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact','/missing']){
   let requested='';
   const env={...base,ASSETS:{fetch:async request=>{requested=new URL(request.url).pathname;return new Response('STORE',{status:200})}}};
   const res=await worker.fetch(new Request('https://perverseworld.com'+pathname),env);
   assert.equal(res.status,200,pathname);
-  assert.equal(requested,'/index.html',pathname);
+  assert.equal(requested,pathname,pathname);
  }
 });
 test('public page routing does not bypass admin authentication',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/admin/'),base);
  assert.equal(res.status,503);
+});
+
+test('signed Access identity can load dashboard and JavaScript as separate protected assets',async()=>{
+ const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+ const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);jwk.kid='test-key';
+ const issuer='https://asset-tests.cloudflareaccess.com',now=Math.floor(Date.now()/1000);
+ const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+ const input=encode({alg:'RS256',kid:jwk.kid})+'.'+encode({iss:issuer,aud:['test-app'],email:'owner@example.com',iat:now,exp:now+300});
+ const signature=Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(input))).toString('base64url');
+ const original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>Response.json({keys:[jwk]});
+  const env={...base,ADMIN_ACCESS_ISSUER:issuer,ADMIN_ACCESS_AUD:'test-app',ADMIN_ALLOWED_EMAILS:'owner@example.com',ASSETS:{fetch:async request=>new Response(new URL(request.url).pathname)}};
+  for(const path of ['/admin','/admin/','/admin/index.html','/admin/admin.js']){
+   const response=await worker.fetch(new Request('https://perverseworld.com'+path,{headers:{'cf-access-jwt-assertion':input+'.'+signature}}),env);
+   assert.equal(response.status,200);assert.equal(await response.text(),path);
+   assert.equal((await worker.fetch(new Request('https://perverseworld.com'+path),env)).status,401);
+  }
+ }finally{globalThis.fetch=original}
 });
 
 const verificationEnv={

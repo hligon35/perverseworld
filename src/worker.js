@@ -159,16 +159,13 @@ export default {
     let identity;try{identity=await verifyAccess(r,e)}catch(x){return fail(x.message,503)}
     if(!identity)return fail('Unauthorized: Cloudflare Access authentication required',401);
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
-    if(path.startsWith('/api/admin/'))return adminAPI(r,e,path,identity);
+    if(path.startsWith('/api/admin/'))return await adminAPI(r,e,path,identity);
     if(r.method!=='GET')return fail('Method not allowed',405);
-    return e.ASSETS.fetch(new Request(new URL('/admin/index.html',url),r));
+    return e.ASSETS.fetch(r);
    }
    if(path.startsWith('/api/')){
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
-    return publicAPI(r,e,path);
-   }
-   if(r.method==='GET' && ['/shop','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact'].includes(path)) {
-    return e.ASSETS.fetch(new Request(new URL('/index.html',url),r));
+    return await publicAPI(r,e,path);
    }
    return e.ASSETS.fetch(r);
   }catch(err){console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}

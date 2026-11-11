@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "name": "Otherworld Graphic Tee",
+    "sub": "Heather gray / signature graphic",
+    "price": 35,
+    "cat": "tees",
+    "tag": "SIGNATURE",
+    "img": "/assets/images/otherworld-tee.jpg"
+  },
+  {
+    "id": 2,
+    "name": "Worldscape Tee",
+    "sub": "White / landscape print",
+    "price": 38,
+    "cat": "tees",
+    "tag": "NEW DROP",
+    "img": "/assets/images/worldscape-tee.jpg"
+  },
+  {
+    "id": 3,
+    "name": "Green Flame Set",
+    "sub": "Gray / matching streetwear",
+    "price": 78,
+    "cat": "sets",
+    "tag": "HEAD TURNER",
+    "img": "/assets/images/green-flame-set.jpg"
+  },
+  {
+    "id": 4,
+    "name": "Midnight Riot Hoodie",
+    "sub": "Black / graphic hoodie",
+    "price": 65,
+    "cat": "hoodies",
+    "tag": "HOT ITEM",
+    "img": "/assets/images/midnight-riot-hoodie.jpg"
+  },
+  {
+    "id": 5,
+    "name": "World Logo Hoodie",
+    "sub": "Light gray / logo front",
+    "price": 65,
+    "cat": "hoodies",
+    "tag": "CLASSIC",
+    "img": "/assets/images/world-logo-hoodie.jpg"
+  },
+  {
+    "id": 6,
+    "name": "Possessed Hand Graphic",
+    "sub": "Black / artwork concept",
+    "price": 30,
+    "cat": "sets",
+    "tag": "ART SERIES",
+    "img": "/assets/images/possessed-hand-graphic.jpg"
+  }
+]
