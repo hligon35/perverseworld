@@ -38,7 +38,9 @@ async function captcha(r,e,t,expectedAction){
   if(!response.ok)return {ok:false};
   const result=await response.json();
   const hostname=clean(result.hostname,255).toLowerCase();
-  const allowedHosts=new Set([new URL(e.PUBLIC_BASE_URL).hostname.toLowerCase()]);
+  const baseHost=new URL(e.PUBLIC_BASE_URL).hostname.toLowerCase();
+  const allowedHosts=new Set([baseHost]);
+  if(baseHost==='perverseworld.com')allowedHosts.add('www.perverseworld.com');
   // Explicit local development support. Never accept unrelated production hostnames.
   if(e.TURNSTILE_ALLOW_LOCALHOST==='true')allowedHosts.add('localhost');
   return {ok:result.success===true&&allowedHosts.has(hostname)&&result.action===expectedAction};
