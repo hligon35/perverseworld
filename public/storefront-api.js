@@ -2,6 +2,7 @@
 async function req(path,opt={}){const r=await fetch(path,{credentials:'same-origin',...opt});const b=await r.json().catch(()=>({}));if(!r.ok)throw Error(b.error||'Request failed');return b}
 function challenge(id,action,cb){
  const element=$(id);if(!siteKey||!window.turnstile||!element)return null;
+ if(element.closest('.newsletter')&&getComputedStyle(element.closest('.newsletter')).display==='none')return null;
  return window.turnstile.render(element,{sitekey:siteKey,action,theme:'dark',
   callback:cb,'expired-callback':()=>cb(''),'error-callback':()=>cb(''),
   'timeout-callback':()=>cb('')});
