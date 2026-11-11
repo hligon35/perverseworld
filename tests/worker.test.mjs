@@ -22,3 +22,16 @@ test('unconfigured mailbox is not publicly exposed',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/api/admin/mailbox'),base);
  assert.equal(res.status,503);
 });
+test('dedicated storefront URLs resolve to the branded index',async()=>{
+ for(const pathname of ['/shop','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact']){
+  let requested='';
+  const env={...base,ASSETS:{fetch:async request=>{requested=new URL(request.url).pathname;return new Response('STORE',{status:200})}}};
+  const res=await worker.fetch(new Request('https://perverseworld.com'+pathname),env);
+  assert.equal(res.status,200,pathname);
+  assert.equal(requested,'/index.html',pathname);
+ }
+});
+test('public page routing does not bypass admin authentication',async()=>{
+ const res=await worker.fetch(new Request('https://perverseworld.com/admin/'),base);
+ assert.equal(res.status,503);
+});
