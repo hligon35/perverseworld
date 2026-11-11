@@ -1,0 +1,50 @@
+/* Perverse World multipage layout: shared original branding and product artwork. */
+.pw-route-hero{background:radial-gradient(ellipse at 90% 45%,rgba(196,63,32,.2),transparent 52%),linear-gradient(115deg,#121410,#20221a);color:#f0e9d8;border-bottom:1px solid #55584c;padding:clamp(64px,9vw,130px) max(24px,calc((100vw - 1380px)/2));position:relative;overflow:hidden}
+.pw-route-hero:after{content:'✳';position:absolute;right:-18px;top:-84px;font-size:clamp(220px,35vw,590px);color:#ef4c2d;opacity:.08;pointer-events:none;transform:rotate(-20deg)}
+.pw-route-inner{position:relative;z-index:1;max-width:900px}
+.pw-route-index,.pw-collection-count{font:900 13px/1.2 var(--cond,Impact),sans-serif;color:#ed5b3d;letter-spacing:3px}
+.pw-route-hero h1{font:900 clamp(60px,10vw,145px)/.84 var(--cond,Impact),sans-serif;max-width:1060px;letter-spacing:-2px;margin:22px 0;text-transform:uppercase}
+.pw-route-hero p{font-size:clamp(14px,1.8vw,20px);max-width:570px;line-height:1.6;color:#c4c3b5}
+.pw-breadcrumb{display:flex;align-items:center;gap:7px;font:800 11px var(--cond,Impact),sans-serif;letter-spacing:2px;margin-top:30px;color:#9c9f92}
+.pw-breadcrumb a{color:#e8e9dc;text-decoration:underline;text-underline-offset:4px}
+.navlinks .is-current,.menu-mobile .is-current{color:#ef4c2d!important;text-decoration:underline;text-underline-offset:7px}
+body[data-site-page=shop] .hero,body[data-site-page=shop] .story,body[data-site-page=shop] .newsletter,
+body[data-site-page=collections] .hero,body[data-site-page=collections] .story,body[data-site-page=collections] .newsletter,body[data-site-page=collections] #shop,
+body[data-site-page=tees] .hero,body[data-site-page=tees] .story,body[data-site-page=tees] .newsletter,
+body[data-site-page=hoodies] .hero,body[data-site-page=hoodies] .story,body[data-site-page=hoodies] .newsletter,
+body[data-site-page=sets] .hero,body[data-site-page=sets] .story,body[data-site-page=sets] .newsletter,
+body[data-site-page=about] .hero,body[data-site-page=about] #shop,
+body[data-site-page=contact] .hero,body[data-site-page=contact] #shop,body[data-site-page=contact] .story,
+body[data-site-page=contact] .newsletter,body[data-site-page=contact] .marquee{display:none!important}
+body[data-site-page=shop] .section,body[data-site-page=tees] .section,body[data-site-page=hoodies] .section,body[data-site-page=sets] .section{padding-top:60px}
+body[data-site-page=tees] .toolbar .filters,body[data-site-page=hoodies] .toolbar .filters,body[data-site-page=sets] .toolbar .filters{display:none}
+body[data-site-page=tees] .sectionhead,body[data-site-page=hoodies] .sectionhead,body[data-site-page=sets] .sectionhead{display:none}
+body[data-site-page=home] #shop .products .product:nth-child(n+4){display:none}
+body[data-site-page=home] #shop .toolbar{display:none}
+body[data-site-page=home] .pw-home-intro{margin-bottom:26px}
+body[data-site-page=home] .pw-home-intro h2{font:900 clamp(36px,5vw,72px)/.95 var(--cond,Impact),sans-serif;margin:10px 0;max-width:750px}
+body[data-site-page=home] .pw-home-intro p{color:#9da295;max-width:520px}
+.pw-page-button{display:inline-flex;align-items:center;gap:8px;text-decoration:none;background:#ec512f;color:#161612;padding:14px 22px;font:900 15px var(--cond,Impact),sans-serif;letter-spacing:1.5px;margin:22px 0}
+.pw-page-button:hover{background:#fd6942}
+body[data-site-page=home] .story .pw-page-button{position:relative;margin:10px 30px}
+.pw-collection-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:60px clamp(22px,5vw,90px);background:#141610}
+.pw-collection-card{display:flex;flex-direction:column;justify-content:end;min-height:390px;background:radial-gradient(circle at 15% 10%,rgba(235,79,44,.23),transparent 40%),#26291f;color:#f2e9d6;text-decoration:none;padding:30px;border:1px solid #464538;transition:transform .2s,border-color .2s;position:relative;overflow:hidden}
+.pw-collection-card:nth-child(2){background:radial-gradient(circle at 80% 18%,rgba(156,176,110,.17),transparent 50%),#23261f}
+.pw-collection-card:nth-child(3){background:radial-gradient(circle at 30% 20%,rgba(235,168,61,.18),transparent 47%),#202018}
+.pw-collection-card:before{content:'✳';position:absolute;right:-38px;top:10px;font-size:240px;opacity:.08;transform:rotate(24deg);color:#ef4b2c}
+.pw-collection-card:hover{transform:translateY(-5px);border-color:#e35a36}
+.pw-collection-card h2{font:900 clamp(39px,4vw,75px)/.87 var(--cond,Impact),sans-serif;margin:16px 0;position:relative}
+.pw-collection-card p{max-width:250px;color:#b3b7a9;font-size:14px;line-height:1.6}
+.pw-collection-go{font:900 12px var(--cond,Impact),sans-serif;letter-spacing:1.5px;color:#f36b45;margin-top:30px}
+.pw-collection-feature{margin:40px clamp(22px,5vw,90px) 70px}
+.pw-return-link{display:inline-block;font:900 13px var(--cond,Impact),sans-serif;letter-spacing:2px;color:#e85936;margin:0 0 35px}
+body[data-site-page=about] .story{padding-top:70px;padding-bottom:70px}
+.pw-about-notes{background:#24271e;color:#ece8de;padding:80px 10vw}
+.pw-about-inner{max-width:850px;margin:auto}
+.pw-about-inner h2{font:900 clamp(46px,7vw,90px)/.93 var(--cond,Impact),sans-serif;margin:18px 0}
+.pw-about-inner p{font-size:17px;color:#c4c6b8;line-height:1.75}
+body[data-site-page=contact] .pw-contact-page{display:block!important;background:#171a15;border:0;padding:55px 24px 90px}
+body[data-site-page=contact] .pw-contact-page h2{display:none}
+.pw-contact-note{background:#262a21;text-align:center;padding:60px 22px;color:#d5d8c9}
+.pw-contact-note p{margin:14px auto;max-width:500px}
+@media(max-width:800px){.pw-collection-cards{grid-template-columns:1fr}.pw-collection-card{min-height:250px}.pw-route-hero{padding:66px 24px}.pw-route-hero h1{letter-spacing:-1px}.pw-collection-feature{margin:20px 22px 50px}}
