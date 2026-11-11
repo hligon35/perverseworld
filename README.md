@@ -51,3 +51,20 @@ Current shopping bag and checkout are a **demo**, not a payment-integrated comme
 - `apps/mobile/` — Expo shell
 
 Official repository: **hligon35/perverseworld** (no dash).
+
+## Cloudflare Turnstile
+
+Turnstile is integrated into **newsletter subscriptions** and **contact submissions**. Each form renders its own challenge, with action names `newsletter` and `contact`; the Worker verifies every submitted token using Cloudflare's Siteverify endpoint, including success, hostname and expected action. Tokens are never trusted solely on the client. When the widget is unconfigured, the public forms fail closed.
+
+1. In the Cloudflare dashboard, open **Turnstile**, create a managed widget for `perverseworld.com` (and `www.perverseworld.com` if used), then copy its **site key** and **secret key**.
+2. In your Worker settings, set `TURNSTILE_SITE_KEY` to the **public site key** (a nonsecret environment variable). The variable is included in the public `/api/config` response.
+3. Store the **secret key only as a Worker secret**:
+
+   ```bash
+   npx wrangler secret put TURNSTILE_SECRET
+   ```
+
+4. For local development, set equivalent values in an untracked `.dev.vars` file. The API rejects unverified requests even when testing locally. The Worker compares the Siteverify hostname to `PUBLIC_BASE_URL`; if using a `localhost` testing widget, configure `TURNSTILE_ALLOW_LOCALHOST=true` only for development.
+5. Deploy with `npm run deploy` and verify newsletter signup and contact submissions on the live domain. Avoid using real mailing-list addresses for test submissions.
+
+**Security:** Do not place `TURNSTILE_SECRET` in `wrangler.toml`, `.env.example`, frontend code, or GitHub. The domain and secret must be configured in the actual Cloudflare account before the forms can accept submissions.
