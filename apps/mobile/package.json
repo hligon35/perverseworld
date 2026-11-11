@@ -1,0 +1,1 @@
+{"name":"@perverseworld/mobile","version":"0.1.0","private":true,"main":"index.js","scripts":{"start":"expo start","android":"expo run:android","ios":"expo run:ios","check":"node --check App.js"},"dependencies":{"expo":"~58.0.0","expo-status-bar":"~3.0.0","react":"19.3.0","react-native":"0.88.1","react-native-webview":"^13.15.0"}}
