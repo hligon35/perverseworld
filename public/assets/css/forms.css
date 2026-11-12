@@ -18,7 +18,11 @@ button:disabled{opacity:.55;cursor:wait}
 .pw-home-intro{padding-bottom:0}
 .pw-home-intro+#shop{padding-top:15px}
 .menu-mobile:not(.open){visibility:hidden}
-.footer-links nav{display:flex;flex-direction:column;gap:13px}
+.footer-links nav{display:flex;flex-direction:column;gap:13px;align-items:flex-start;min-width:190px}
+.pw-nav-link{display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;line-height:1.35}
+.pw-nav-link .material-symbols-outlined{width:22px;text-align:center;font-size:20px;flex:0 0 22px}
+.footer-links .pw-nav-link{width:100%;min-height:28px}
+.footer-links nav>strong{margin-bottom:4px}
 .footer-links .is-current{color:var(--orange)}
 .footer-logo{display:block}
 #story{scroll-margin-top:85px}

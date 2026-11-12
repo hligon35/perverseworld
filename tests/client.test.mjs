@@ -50,7 +50,7 @@ test('forms mount only existing challenges, send matching tokens, and reset afte
     const form=element(),button=element(),status=element(),mount=element();let options,script,posted,resets=0;
     form.querySelector=()=>button;form.reset=()=>{};
     const ids=action==='contact'?{contactForm:form,'contact-status':status,'contact-challenge':mount}:{signup:form,signupMsg:status,'newsletter-challenge':mount,email:{value:'test@example.com'}};
-    const context={window:{PWStore:{updateCatalog(){}},turnstile:{render(el,config){assert.equal(el,mount);options=config;return 0;},reset(){resets++;}}},
+    const context={URLSearchParams,window:{PWStore:{updateCatalog(){}},turnstile:{render(el,config){assert.equal(el,mount);options=config;return 0;},reset(){resets++;}}},
       FormData:class{*[Symbol.iterator](){yield ['message','Hello'];}},console,
       document:{getElementById:id=>ids[id],createElement:()=>({}),head:{append:el=>script=el}},
       fetch:async(path,opt)=>{if(path==='/api/config')return Response.json({turnstileSiteKey:'public'});if(path==='/api/products')return Response.json({products:[]});posted=JSON.parse(opt.body);return Response.json({ok:true});}
@@ -66,4 +66,25 @@ test('forms mount only existing challenges, send matching tokens, and reset afte
     options.callback('rejected');context.fetch=async()=>Response.json({error:'Rejected'},{status:403});
     await form.onsubmit({preventDefault(){}});assert.equal(status.textContent,'Rejected');assert.equal(resets,2);
   }
+});
+
+test('catalog and Turnstile stay idle until the launch gate opens',async()=>{
+  let entered,calls=0;
+  const context={URLSearchParams,window:{PWStore:{updateCatalog(){}}},console,
+    document:{getElementById:id=>id==='launchGate'?{}:null,addEventListener:(event,fn)=>{assert.equal(event,'pw:entered');entered=fn;}},
+    fetch:async()=>{calls++;return Response.json({products:[]});}
+  };
+  vm.runInNewContext(forms,context);assert.equal(calls,0);
+  await entered();assert.equal(calls,1);
+});
+
+test('bag enquiries populate the contact form without sending anything',()=>{
+  const form={elements:{subject:{value:''},message:{value:''}},querySelector:()=>({})};
+  const context={URLSearchParams,window:{location:{search:'?enquiry=bag'}},sessionStorage:{getItem:()=>JSON.stringify([{name:'World Logo Hoodie',size:'M'}])},
+    document:{getElementById:id=>id==='contactForm'?form:id==='launchGate'?{}:null,addEventListener(){}},
+    fetch:()=>{throw Error('No request before entry');}
+  };
+  vm.runInNewContext(forms,context);
+  assert.equal(form.elements.subject.value,'Order enquiry');
+  assert.match(form.elements.message.value,/World Logo Hoodie — Size M/);
 });

@@ -11,7 +11,7 @@ test('all routes contain complete, distinct static content without page-switchin
   for(const route of routes){
     const html=await read(`dist/${route.path==='/'?'index':route.path.slice(1)}.html`);
     assert.match(html,new RegExp(`data-site-page="${route.page}"`));
-    assert.equal((html.match(/<h1[ >]/g)||[]).length,1,route.path);
+    assert.equal((html.match(/<h1[ >]/g)||[]).length,2,route.path); // Launch and storefront, only one surface is visible.
     assert.match(html,new RegExp(`rel="canonical" href="https://perverseworld.com${route.path}"`));
     assert.match(html,/alphazonelabs\.com/);assert.match(html,/brand-ui\.css/);
     assert.doesNotMatch(html,/data:image|site-pages|onclick=|style=|{{\w+}}|<style>|<script>/);
@@ -19,10 +19,14 @@ test('all routes contain complete, distinct static content without page-switchin
     assert.equal(html.includes('id="signup"'),route.page==='home');
     assert.equal(html.includes('id="story"'),route.page==='home');
     assert.doesNotMatch(html,/instagram|[↗→←↑]|href="\/(?:about|collections)/i);
+    assert.doesNotMatch(html,/concept|preview|demo|placeholders|not a live store|WORLD<\/span>_/i);
+    assert.match(html,/<div id="storefront" hidden>/);
+    assert.match(html,/id="launchCloud"/);
     for(const label of ['Main navigation','Mobile navigation','Footer navigation']){
       const nav=html.match(new RegExp(`<nav[^>]+aria-label="${label}"[^>]*>([\\s\\S]*?)</nav>`))?.[1];
       assert.ok(nav,label);
       assert.deepEqual([...nav.matchAll(/href="([^"]+)"/g)].map(match=>match[1]),['/','/shop','/contact']);
+      assert.match(nav,/>home<\/span>/);assert.match(nav,/>storefront<\/span>/);
     }
     const cards=html.match(/<article class="product">/g)||[];
     assert.equal(cards.length,route.page==='home'?3:route.page==='shop'?6:0,route.path);

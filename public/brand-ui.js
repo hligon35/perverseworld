@@ -16,7 +16,7 @@
   const replacements=[
     ['#menuBtn','menu',true],['#cartBtn','shopping_bag',false],
     ['#closeCart','close',true],['#closeModal','close',true],
-    ['#checkout','shopping_cart_checkout',false],['#modalAdd','add_shopping_cart',false],
+    ['#checkout','mail',false],['#modalAdd','add_shopping_cart',false],
     ['#reloadProducts','refresh',false],['#reloadSubmissions','refresh',false],
     ['#reloadMailbox','refresh',false],['#reloadCampaigns','refresh',false],
     ['#reloadSubscribers','refresh',false],['#newProduct','add_circle',false],

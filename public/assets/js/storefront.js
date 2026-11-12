@@ -61,7 +61,7 @@
   $('cartBtn').onclick = () => {renderCart();$('drawer').classList.add('open');$('overlay').classList.add('open');};
   $('closeCart').onclick=closeCart; $('closeModal').onclick=closeProduct;
   $('overlay').onclick=()=>{closeProduct();closeCart();};
-  $('checkout').onclick=()=>toast('DEMO ONLY — CHECKOUT NOT CONNECTED');
+  $('checkout').onclick=()=>{window.location.href='/contact?enquiry=bag';};
   const closeMenu=()=>{$('mobileMenu').classList.remove('open');$('menuBtn').setAttribute('aria-expanded','false');};
   $('menuBtn').setAttribute('aria-controls','mobileMenu'); closeMenu();
   $('menuBtn').onclick=()=>{const open=$('mobileMenu').classList.toggle('open');$('menuBtn').setAttribute('aria-expanded',String(open));};
