@@ -1,14 +1,5 @@
 [
   {
-    "id": 1,
-    "name": "Otherworld Graphic Tee",
-    "sub": "Heather gray / signature graphic",
-    "price": 35,
-    "cat": "tees",
-    "tag": "SIGNATURE",
-    "img": "/assets/images/otherworld-tee.jpg"
-  },
-  {
     "id": 2,
     "name": "Worldscape Tee",
     "sub": "White / landscape print",
@@ -43,14 +34,5 @@
     "cat": "hoodies",
     "tag": "CLASSIC",
     "img": "/assets/images/world-logo-hoodie.jpg"
-  },
-  {
-    "id": 6,
-    "name": "Possessed Hand Graphic",
-    "sub": "Black / original artwork",
-    "price": 30,
-    "cat": "sets",
-    "tag": "ART SERIES",
-    "img": "/assets/images/possessed-hand-graphic.jpg"
   }
 ]

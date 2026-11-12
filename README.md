@@ -6,7 +6,7 @@ Branded multi-page streetwear storefront, AlphaZoneLabs admin shell, Cloudflare 
 
 | URL | Content |
 | --- | --- |
-| `/` | Brand hero and background, three-product showcase and newsletter |
+| `/` | Brand meaning, World Logo Hoodie feature and newsletter |
 | `/shop` | Complete product catalog, size selection and bag |
 | `/contact` | Verified contact form |
 | `/admin/` | Access-protected operations dashboard |
@@ -70,10 +70,11 @@ The bag's **Ask about your bag** action opens Contact with an order enquiry and 
 - `src/site/pages/` — actual content for each storefront page
 - `src/site/routes.js` — route metadata used during generation
 - `src/site/products.json` — preview catalog and original image references
+- `src/site/catalog-policy.js` — retired product IDs and the fixed World Logo Hoodie homepage feature
 - `scripts/build.mjs` — dependency-free static generator; `dist/` is ignored and rebuilt cleanly
 - `public/assets/css/` — original design, page layouts and form styles
 - `public/assets/js/` — catalog/bag behavior and live API/Turnstile integration
-- `public/assets/images/` — seven deduplicated original logo/artwork/product files
+- `public/assets/images/` — original logo and four available product images
 - `public/brand-ui.js`, `public/brand-ui.css` — Material Symbols and studio attribution
 - `public/admin/` — AlphaZoneLabs-style protected admin UI
 - `src/worker.js` — public routes, protected APIs and email integration
@@ -81,6 +82,8 @@ The bag's **Ask about your bag** action opens Contact with an order enquiry and 
 - `apps/mobile/` — Expo shell
 
 Official repository: **hligon35/perverseworld** (no dash).
+
+The public catalog contains Worldscape Tee, Green Flame Set, Midnight Riot Hoodie and World Logo Hoodie. Otherworld Graphic Tee (ID 1) and Possessed Hand Graphic (ID 6) were removed with their source images. The public API and client catalog suppress those IDs even before database migration `0002_retire_non_products.sql` is applied; saved bags discard them too. The migration archives the corresponding D1 rows without deleting history. Apply it with the existing migration workflow after production configuration is verified. Home selects product ID 5 explicitly, so a reordered live catalog cannot substitute another piece; when the hoodie is unavailable, Home shows an availability message rather than a different product.
 
 ## Cloudflare Turnstile
 

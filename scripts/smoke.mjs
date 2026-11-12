@@ -29,5 +29,6 @@ for(const path of ['/admin/','/admin/admin.js','/api/admin/products']){
 }
 const config=await (await fetch(base+'/api/config')).json();
 assert.deepEqual(Object.keys(config),['turnstileSiteKey']);
-const products=await (await fetch(base+'/api/products')).json();assert.equal(products.products.length,6);
+const products=await (await fetch(base+'/api/products')).json();assert.equal(products.products.length,4);
+assert.ok(products.products.every(product=>![1,6].includes(product.id)));
 console.log('Local Worker smoke checks passed: three pages, legacy redirects, trailing slashes, 404, protected admin assets/API, config and seeded D1 catalog.');

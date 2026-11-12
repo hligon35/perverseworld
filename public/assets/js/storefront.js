@@ -6,9 +6,11 @@
   const money = n => '$' + Number(n).toFixed(2);
   const image = value => /^https:\/\//.test(value || '') || /^\/assets\/images\/[\w.-]+$/.test(value || '') ? value : '';
   const builtins = window.PW_CATALOG || [];
+  const retired = window.PW_CATALOG_CONFIG?.retiredProductIds || [];
   let products = [...builtins], cart = [], current = null, size = 'S';
   let filter = $('shop')?.dataset.category || 'all';
   const limit = Number($('shop')?.dataset.limit) || 0;
+  const featuredId = Number($('shop')?.dataset.featuredId) || 0;
   function persist() { try { sessionStorage.setItem('pw-cart', JSON.stringify(cart)); } catch {} }
   function toast(text) {
     $('toast').textContent = text; $('toast').classList.add('visible');
@@ -20,6 +22,7 @@
       if (!Array.isArray(saved)) return;
       cart = saved.slice(0, 40).flatMap(item => {
         // Migrate old id/size sessions; snapshots retain API-only products on every page.
+        if(retired.includes(Number(item.id)))return [];
         const p = item.name ? item : builtins.find(p => p.id === Number(item.id));
         return p && Number.isInteger(Number(p.id)) && Number.isFinite(Number(p.price)) && Number(p.price) >= 0 && ['S','M','L','XL','2XL'].includes(item.size)
           ? [{id:Number(p.id),name:String(p.name).slice(0,150),price:Number(p.price),img:image(p.img),size:item.size}] : [];
@@ -28,11 +31,11 @@
   }
   function renderProducts() {
     if (!$('products')) return;
-    let items = products.filter(p => filter === 'all' || p.cat === filter);
+    let items = products.filter(p => !retired.includes(p.id)&&(!featuredId||p.id===featuredId)&&(filter === 'all' || p.cat === filter));
     if ($('sort')?.value === 'low') items.sort((a,b) => a.price-b.price);
     if ($('sort')?.value === 'high') items.sort((a,b) => b.price-a.price);
     if (limit) items = items.slice(0,limit);
-    $('products').innerHTML = items.length ? items.map(p => `<article class="product"><div class="product-image"><img src="${esc(image(p.img))}" alt="${esc(p.name)}" loading="lazy"><span class="tag">${esc(p.tag)}</span><button class="add" data-id="${p.id}" aria-label="View ${esc(p.name)}">+</button></div><div class="product-info"><div><div class="product-name">${esc(p.name)}</div><div class="product-sub">${esc(p.sub)}</div></div><div class="price">${money(p.price)}</div></div></article>`).join('') : '<p class="empty">No pieces in this collection yet. Check back for the next drop.</p>';
+    $('products').innerHTML = items.length ? items.map(p => `<article class="product"><div class="product-image"><img src="${esc(image(p.img))}" alt="${esc(p.name)}" loading="lazy"><span class="tag">${esc(p.tag)}</span><button class="add" data-id="${p.id}" aria-label="View ${esc(p.name)}">+</button></div><div class="product-info"><div><div class="product-name">${esc(p.name)}</div><div class="product-sub">${esc(p.sub)}</div></div><div class="price">${money(p.price)}</div></div></article>`).join('') : `<p class="empty">${featuredId?'The World Logo Hoodie is currently unavailable. Explore the shop for more pieces.':'No pieces in this collection yet. Check back for the next drop.'}</p>`;
     $('products').querySelectorAll('.add').forEach(b => b.onclick = () => openProduct(Number(b.dataset.id)));
   }
   function closeOverlay() { if (!$('drawer').classList.contains('open') && !$('modal').classList.contains('open')) $('overlay').classList.remove('open'); }
@@ -68,7 +71,7 @@
   $('mobileMenu').querySelectorAll('a').forEach(a=>a.onclick=closeMenu);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeProduct();closeCart();closeMenu();}});
   window.PWStore={updateCatalog(rows){
-    products=rows.map(p=>({...p,id:Number(p.id),price:Number(p.price)||0,img:p.img?.startsWith('builtin:')?builtins.find(x=>x.id===Number(p.img.slice(8)))?.img||'':image(p.img)}));
+    products=rows.filter(p=>!retired.includes(Number(p.id))).map(p=>({...p,id:Number(p.id),price:Number(p.price)||0,img:p.img?.startsWith('builtin:')?builtins.find(x=>x.id===Number(p.img.slice(8)))?.img||'':image(p.img)}));
     cart=cart.map(item=>{const p=products.find(p=>p.id===item.id);return p?{id:p.id,name:p.name,price:p.price,img:p.img,size:item.size}:item;});
     persist();renderProducts();renderCart();
   }};

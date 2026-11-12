@@ -1,5 +1,6 @@
 import {cp, mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {routes} from '../src/site/routes.js';
+import {retiredProductIds,homeProductId} from '../src/site/catalog-policy.js';
 
 export const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const root = new URL('../', import.meta.url);
@@ -18,16 +19,17 @@ if(output.href!==root.href+'dist/')throw Error('Unexpected output directory');
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 await cp(new URL('public/',root),new URL('dist/',root),{recursive:true});
-await write('dist/assets/js/catalog.js',`// Generated from src/site/products.json.\nwindow.PW_CATALOG = ${JSON.stringify(products)};\n`);
+await write('dist/assets/js/catalog.js',`// Generated from src/site/products.json and catalog-policy.js.\nwindow.PW_CATALOG = ${JSON.stringify(products)};\nwindow.PW_CATALOG_CONFIG = ${JSON.stringify({retiredProductIds,homeProductId})};\n`);
 
 for(const route of routes){
   const icons={Home:'home',Shop:'storefront',Contact:'mail'};
   const nav=navigation.map(([label,path])=>`<a href="${path}" class="pw-nav-link${path===route.path?' is-current':''}"${path===route.path?' aria-current="page"':''} data-pw-icon="${icons[label]}"><span class="material-symbols-outlined" aria-hidden="true">${icons[label]}</span><span>${label}</span></a>`).join('');
-  const category='all', limit=route.page==='home'?3:0;
-  const selected=products.filter(p=>category==='all'||p.cat===category).slice(0,limit||undefined);
+  const category='all', limit=route.page==='home'?1:0;
+  const featuredId=route.page==='home'?homeProductId:'';
+  const selected=products.filter(p=>!retiredProductIds.includes(p.id)&&(!featuredId||p.id===featuredId)).slice(0,limit||undefined);
   const cards=selected.map(p=>`<article class="product"><div class="product-image"><img src="${escapeHTML(p.img)}" alt="${escapeHTML(p.name)}" loading="lazy"><span class="tag">${escapeHTML(p.tag)}</span><button class="add" data-id="${p.id}" aria-label="View ${escapeHTML(p.name)}">+</button></div><div class="product-info"><div><div class="product-name">${escapeHTML(p.name)}</div><div class="product-sub">${escapeHTML(p.sub)}</div></div><div class="price">$${p.price.toFixed(2)}</div></div></article>`).join('');
   const toolbar=route.page==='home'?'':`<div class="toolbar"><div class="filters">${[['all','All pieces'],['tees','T-shirts'],['hoodies','Hoodies'],['sets','Sets & graphics']].map(([value,label])=>`<button class="filter${value==='all'?' active':''}" data-filter="${value}">${label}</button>`).join('')}</div><label class="sort">Sort by <select id="sort"><option value="featured">Featured</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></label></div>`;
-  const catalog=await component('catalog',{category,limit,products:cards,toolbar,catalogHeading:route.page==='home'?'':'<div class="sectionhead"><div><span class="kicker">01 / THE LINEUP</span><h2>FRESH OUT<br>THE WORLD.</h2></div><a class="textlink" href="/#story">THE STORY BEHIND IT</a></div>'});
+  const catalog=await component('catalog',{category,limit,featuredId,products:cards,toolbar,catalogHeading:route.page==='home'?'':'<div class="sectionhead"><div><span class="kicker">01 / THE LINEUP</span><h2>FRESH OUT<br>THE WORLD.</h2></div><a class="textlink" href="/#story">THE STORY BEHIND IT</a></div>'});
   const values={catalog,routeHero:route.index?await component('route-hero',Object.fromEntries(Object.entries(route).map(([k,v])=>[k,escapeHTML(v)]))):''};
   for(const name of ['hero','marquee','story','newsletter'])values[name]=await component(name);
   const content=fill(await read(`src/site/pages/${route.page}.html`),values);

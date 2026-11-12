@@ -29,7 +29,13 @@ test('all routes contain complete, distinct static content without page-switchin
       assert.match(nav,/>home<\/span>/);assert.match(nav,/>storefront<\/span>/);
     }
     const cards=html.match(/<article class="product">/g)||[];
-    assert.equal(cards.length,route.page==='home'?3:route.page==='shop'?6:0,route.path);
+    assert.equal(cards.length,route.page==='home'?1:route.page==='shop'?4:0,route.path);
+    assert.doesNotMatch(html,/Otherworld Graphic Tee|Possessed Hand Graphic/);
+    if(route.page==='home'){
+      const card=html.match(/<article class="product">[\s\S]*?<\/article>/)?.[0];
+      assert.match(card,/World Logo Hoodie/);
+      assert.doesNotMatch(card,/Worldscape Tee|Green Flame Set|Midnight Riot Hoodie/);
+    }
     for(const [,asset] of html.matchAll(/(?:src|href)="(\/(?:assets\/|brand-ui)[^"]*)"/g))assert.ok((await stat(new URL('../dist'+asset,import.meta.url))).isFile(),asset);
     sizes.push(html.length);
   }

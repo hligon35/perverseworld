@@ -15,6 +15,13 @@ test('public config does not expose secrets',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/api/config'),{...base,TURNSTILE_SITE_KEY:'public-site-key',TURNSTILE_SECRET:'private'});
  assert.deepEqual(await res.json(),{turnstileSiteKey:'public-site-key'});
 });
+test('public catalog excludes retired rows even before the archive migration runs',async()=>{
+ const row=id=>({id,name:'Item '+id,description:'Product',category:'hoodies',price_cents:6500,image_url:'builtin:'+id,active:1});
+ const env={...base,DB:{prepare:()=>({all:async()=>({results:[1,2,3,4,5,6].map(row)})})}};
+ const response=await worker.fetch(new Request('https://perverseworld.com/api/products'),env);
+ assert.equal(response.status,200);
+ assert.deepEqual((await response.json()).products.map(p=>p.id),[2,3,4,5]);
+});
 test('rejects cross-origin mutations',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/api/submissions',{method:'POST',headers:{origin:'https://evil.example'}}),base);
  assert.equal(res.status,403);

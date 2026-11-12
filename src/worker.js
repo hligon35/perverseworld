@@ -1,4 +1,5 @@
 import {legacyRedirects} from './site/routes.js';
+import {retiredProductIds} from './site/catalog-policy.js';
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -54,7 +55,7 @@ function product(row){let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}ca
 function productInput(b){
  const x={name:clean(b.name,150),description:clean(b.description,700),category:clean(b.category,40),image_url:clean(b.image_url,1500),badge:clean(b.badge,40),price_cents:Number(b.price_cents),sizes:b.sizes||{},active:b.active===false?0:1};
  if(!x.name||!['tees','hoodies','sets','accessories'].includes(x.category)||!Number.isInteger(x.price_cents)||x.price_cents<0||x.price_cents>100000000||typeof x.sizes!=='object'||Array.isArray(x.sizes)||Object.entries(x.sizes).length>16||Object.entries(x.sizes).some(([k,v])=>!(/^[A-Za-z0-9 -]{1,16}$/.test(k)&&Number.isInteger(v)&&v>=0&&v<=100000)))throw Error('Invalid product fields');
- if(x.image_url&&!/^builtin:[1-6]$/.test(x.image_url)&&!/^https:\/\/[\w.-]+(?:\/[\w\-./%?=&+#]*)?$/.test(x.image_url))throw Error('Image must be HTTPS or built-in');
+ if(x.image_url&&!/^builtin:[2-5]$/.test(x.image_url)&&!/^https:\/\/[\w.-]+(?:\/[\w\-./%?=&+#]*)?$/.test(x.image_url))throw Error('Image must be HTTPS or an available built-in image (2–5)');
  return {...x,sizes_json:JSON.stringify(x.sizes)};
 }
 async function sendEmail(e,to,subject,html,text,from){
@@ -65,7 +66,7 @@ async function sendEmail(e,to,subject,html,text,from){
 async function publicAPI(r,e,path){
  if(r.method==='GET'&&path==='/api/config')return json({turnstileSiteKey:e.TURNSTILE_SITE_KEY||''});
  const d=db(e);
- if(r.method==='GET'&&path==='/api/products')return json({products:(await d.prepare('SELECT * FROM products WHERE active=1 ORDER BY id DESC').all()).results.map(product)});
+ if(r.method==='GET'&&path==='/api/products')return json({products:(await d.prepare('SELECT * FROM products WHERE active=1 ORDER BY id DESC').all()).results.filter(row=>!retiredProductIds.includes(Number(row.id))).map(product)});
  if(r.method==='POST'&&path==='/api/newsletter/subscribe'){
   const b=await parse(r);if(b.website)return json({ok:true});
   const email=clean(b.email,254).toLowerCase();if(!emailOK(email))return fail('Enter a valid email');

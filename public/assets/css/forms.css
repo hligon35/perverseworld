@@ -25,9 +25,9 @@ button:disabled{opacity:.55;cursor:wait}
 .footer-links nav>strong{margin-bottom:4px}
 .footer-links .is-current{color:var(--orange)}
 .footer-logo{display:block}
+.footer-logo>span{color:var(--ink)}
 #story{scroll-margin-top:85px}
-body[data-site-page=home] .products{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:760px){body[data-site-page=home] .products{grid-template-columns:repeat(2,minmax(0,1fr))}}
+body[data-site-page=home] .products{grid-template-columns:minmax(0,1fr);max-width:480px;margin:0 auto}
 @media(max-width:760px){.nav .menu-mobile{position:absolute;inset:100% 0 auto;transform:none}}
 @media(max-width:400px){body[data-site-page=home] .products{grid-template-columns:1fr}}
 @media(max-width:600px){.pw-grid{grid-template-columns:1fr}}
