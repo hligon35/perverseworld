@@ -37,3 +37,17 @@ INBOUND_DOMAIN = "perverseworld.com"
 FROM_EMAIL = "updates@perverseworld.com"
 MAILBOX_FROM_EMAIL = "support@perverseworld.com"
 CLOUDFLARE_CONFIGURATION_VERIFIED = "true"
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
+[observability.issue_detection]
+enabled = true
