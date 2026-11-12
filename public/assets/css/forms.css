@@ -13,11 +13,17 @@ button:disabled{opacity:.55;cursor:wait}
 .catalog-note{text-align:center;margin-top:35px;font-size:11px;color:#999a90}
 .announcement-symbol{padding:0 13px}
 .newsletter-kicker{font:900 15px var(--cond);letter-spacing:3px}
-.collection-copy .kicker{color:#bc4229}
 #modalPrice{font:900 26px var(--cond)}
 .size-label{font:800 13px var(--cond);letter-spacing:1.5px}
 .pw-home-intro{padding-bottom:0}
 .pw-home-intro+#shop{padding-top:15px}
-.collection-banner{margin:40px clamp(22px,5vw,90px) 70px}
 .menu-mobile:not(.open){visibility:hidden}
+.footer-links nav{display:flex;flex-direction:column;gap:13px}
+.footer-links .is-current{color:var(--orange)}
+.footer-logo{display:block}
+#story{scroll-margin-top:85px}
+body[data-site-page=home] .products{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){body[data-site-page=home] .products{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.nav .menu-mobile{position:absolute;inset:100% 0 auto;transform:none}}
+@media(max-width:400px){body[data-site-page=home] .products{grid-template-columns:1fr}}
 @media(max-width:600px){.pw-grid{grid-template-columns:1fr}}

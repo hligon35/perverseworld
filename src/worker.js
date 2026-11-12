@@ -1,3 +1,4 @@
+import {legacyRedirects} from './site/routes.js';
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -150,6 +151,8 @@ export default {
  async fetch(r,e){
   const url=new URL(r.url),path=url.pathname;
   try{
+   const destination=legacyRedirects[path.replace(/\/+$/,'')];
+   if(destination&&['GET','HEAD'].includes(r.method))return Response.redirect(new URL(destination,url),301);
    if(path==='/unsubscribe'){
     const t=clean(url.searchParams.get('token'),100);if(!/^[a-f0-9]{48}$/.test(t))return new Response('Invalid unsubscribe link',{status:400});
     await db(e).prepare("UPDATE subscribers SET status='unsubscribed' WHERE unsub_token=?").bind(t).run();

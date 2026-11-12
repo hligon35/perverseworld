@@ -26,8 +26,8 @@
   const goIcons={products:'add_box',newsletter:'edit_note',submissions:'fact_check',mailbox:'mail'};
   const byText=[
     [/^shop all$/i,'storefront'],[/^the collection$/i,'checkroom'],[/^our world$/i,'public'],
-    [/^instagram\s*[↗→]?$/i,'photo_camera'],[/^featured drop$/i,'local_fire_department'],
-    [/^our story$/i,'auto_stories'],[/^contact$/i,'mail'],[/^back to top/i,'arrow_upward'],
+    [/^featured drop$/i,'local_fire_department'],
+    [/^our story$/i,'auto_stories'],[/^contact$/i,'mail'],
     [/^join the world/i,'alternate_email'],[/^send message/i,'send'],
     [/^add to bag/i,'add_shopping_cart'],[/^view bag/i,'shopping_bag'],
     [/^save product$/i,'save'],[/^send email$/i,'send'],

@@ -6,17 +6,14 @@ Branded multi-page streetwear storefront, AlphaZoneLabs admin shell, Cloudflare 
 
 | URL | Content |
 | --- | --- |
-| `/` | Brand hero, featured products, signature collection and newsletter |
+| `/` | Brand hero and background, three-product showcase and newsletter |
 | `/shop` | Complete product catalog, size selection and bag |
-| `/collections` | Collection discovery and featured artwork |
-| `/collections/tees` | Graphic tees |
-| `/collections/hoodies` | Hoodies |
-| `/collections/sets` | Sets and graphics |
-| `/about` | Brand story |
-| `/contact` | Contact form and social links |
+| `/contact` | Verified contact form |
 | `/admin/` | Access-protected operations dashboard |
 
 Pages share the original visual identity and original product photography, extracted into reusable image files. The WebView Expo app loads the same site. Page transitions and refreshes keep bag selections for the current browser session, including products added through the API. Existing id/size-only sessions are migrated.
+
+The storefront has exactly three pages. Header and footer components share Home, Shop and Contact navigation; desktop shows links and mobile shows a hamburger menu. The brand story lives on Home at `/#story`. Previous `/about` links redirect there, while `/collections` and its former category pages redirect to `/shop`, where category filters remain available. Storefront buttons have no arrow glyphs, and Instagram links have been removed.
 
 ## Development
 
@@ -27,7 +24,7 @@ npm run db:local
 npm run dev
 ```
 
-`npm run build` generates eight complete HTML documents in `dist/`, copies shared assets and the protected admin UI, checks JavaScript and runs the test suite. It requires only Node.js; no frontend framework or browser rendering is needed. Product cards, navigation, titles and descriptions are present before JavaScript runs. Client code enhances catalog filtering, live products, the bag and verified forms; it never switches pages by hiding unrelated sections.
+`npm run build` generates three complete HTML documents in `dist/`, copies shared assets and the protected admin UI, checks JavaScript and runs the test suite. It requires only Node.js; no frontend framework or browser rendering is needed. Product cards, navigation, titles and descriptions are present before JavaScript runs. Client code enhances catalog filtering, live products, the bag and verified forms; it never switches pages by hiding unrelated sections.
 
 With the local Worker running and the local migration applied, `npm run smoke` checks direct URLs, trailing-slash redirects, 404 responses, protected admin/API paths and the seeded catalog. `npm run mobile:check` checks the retained Expo wrapper's syntax. Install the mobile workspace dependencies separately for an Expo simulator or device build; a native device build is not part of the static web build.
 

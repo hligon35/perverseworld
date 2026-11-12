@@ -2,10 +2,14 @@
 export const routes = [
   {path:'/', page:'home', title:'Perverse World — Wear the Chaos', description:'Independent streetwear for the outsiders. Explore statement graphics and original drops.'},
   {path:'/shop', page:'shop', title:'Shop All — Perverse World', description:'Shop graphic tees, hoodies and sets from Perverse World.', index:'01 / THE SHOP', heading:'ALL PIECES. ZERO RULES.', copy:'Every statement starts somewhere. Explore the entire Perverse World lineup.'},
-  {path:'/collections', page:'collections', title:'Collections — Perverse World', description:'Find your lane: graphic tees, hoodies and sets by Perverse World.', index:'02 / FIND YOUR LANE', heading:'CHOOSE YOUR CHAOS.', copy:'Different looks. Same attitude. Find the collection that fits your world.'},
-  {path:'/collections/tees', page:'tees', category:'tees', title:'Graphic Tees — Perverse World', description:'Shop Perverse World graphic T-shirts.', index:'02 / THE COLLECTION', heading:'GRAPHIC TEES.', copy:'Make a statement without saying a word.'},
-  {path:'/collections/hoodies', page:'hoodies', category:'hoodies', title:'Hoodies — Perverse World', description:'Shop Perverse World hoodies.', index:'02 / THE COLLECTION', heading:'HOODIES.', copy:'Layer up. Stand out. Stay unapologetic.'},
-  {path:'/collections/sets', page:'sets', category:'sets', title:'Sets & Graphics — Perverse World', description:'Explore Perverse World sets and graphic pieces.', index:'02 / THE COLLECTION', heading:'SETS & GRAPHICS.', copy:'Full looks. Loud energy. Your world, your rules.'},
-  {path:'/about', page:'about', title:'Our World — Perverse World', description:'About the outsiders, art, and expressive streetwear behind Perverse World.', index:'03 / THE MOVEMENT', heading:'NOT MADE TO FIT IN.', copy:'Independent streetwear for the ones who refuse to follow the crowd.'},
-  {path:'/contact', page:'contact', title:'Contact — Perverse World', description:'Questions about the brand, orders or collaborations? Contact Perverse World.', index:'04 / STAY CONNECTED', heading:'MAKE CONTACT.', copy:'Questions about drops, sizing, or collaborations? Send us a message.'}
+  {path:'/contact', page:'contact', title:'Contact — Perverse World', description:'Questions about the brand, orders or collaborations? Contact Perverse World.', index:'02 / STAY CONNECTED', heading:'MAKE CONTACT.', copy:'Questions about drops, sizing, or collaborations? Send us a message.'}
 ];
+
+// Keep bookmarks to the previous structure useful without retaining extra pages.
+export const legacyRedirects = {
+  '/about':'/#story',
+  '/collections':'/shop',
+  '/collections/tees':'/shop',
+  '/collections/hoodies':'/shop',
+  '/collections/sets':'/shop'
+};

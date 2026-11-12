@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
+import {legacyRedirects} from '../src/site/routes.js';
 const base={PUBLIC_BASE_URL:'https://perverseworld.com',ASSETS:{fetch:async()=>new Response('STATIC',{status:200})}};
 test('public site serves static assets',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/'),base);
@@ -23,12 +24,21 @@ test('unconfigured mailbox is not publicly exposed',async()=>{
  assert.equal(res.status,503);
 });
 test('dedicated storefront URLs pass through to their own static document',async()=>{
- for(const pathname of ['/','/shop','/shop/','/collections','/collections/tees','/collections/hoodies','/collections/sets','/about','/contact','/missing']){
+ for(const pathname of ['/','/shop','/shop/','/contact','/contact/','/missing']){
   let requested='';
   const env={...base,ASSETS:{fetch:async request=>{requested=new URL(request.url).pathname;return new Response('STORE',{status:200})}}};
   const res=await worker.fetch(new Request('https://perverseworld.com'+pathname),env);
   assert.equal(res.status,200,pathname);
   assert.equal(requested,pathname,pathname);
+ }
+});
+test('old About and Collections bookmarks redirect to the consolidated pages',async()=>{
+ for(const [path,destination] of Object.entries(legacyRedirects)){
+  for(const suffix of ['','/']){
+   const response=await worker.fetch(new Request('https://perverseworld.com'+path+suffix),base);
+   assert.equal(response.status,301);
+   assert.equal(response.headers.get('location'),'https://perverseworld.com'+destination);
+  }
  }
 });
 test('public page routing does not bypass admin authentication',async()=>{
