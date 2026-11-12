@@ -1,6 +1,7 @@
 // Run against `npm run dev` after `npm run db:local`. No production writes.
 import assert from 'node:assert/strict';
 import {routes,legacyRedirects} from '../src/site/routes.js';
+import catalog from '../src/site/products.json' with {type:'json'};
 const base=process.env.SMOKE_BASE_URL||'http://127.0.0.1:8787';
 if(!['localhost','127.0.0.1','[::1]'].includes(new URL(base).hostname))throw Error('Smoke checks must target a local preview.');
 for(const route of routes){
@@ -11,6 +12,13 @@ for(const route of routes){
   }
 }
 assert.equal((await fetch(base+'/not-a-real-page')).status,404);
+for(const product of catalog){
+ for(const suffix of ['','/']){
+  const response=await fetch(base+'/shop/'+product.slug+suffix);
+  assert.equal(response.status,200,product.slug);
+  assert.ok((await response.text()).includes('id="productDetail"'),product.slug);
+ }
+}
 for(const [path,destination] of Object.entries(legacyRedirects)){
   const response=await fetch(base+path,{redirect:'manual'});
   assert.equal(response.status,301,path);
@@ -31,4 +39,7 @@ const config=await (await fetch(base+'/api/config')).json();
 assert.deepEqual(Object.keys(config),['turnstileSiteKey']);
 const products=await (await fetch(base+'/api/products')).json();assert.equal(products.products.length,4);
 assert.ok(products.products.every(product=>![1,6].includes(product.id)));
+assert.deepEqual(products.products.filter(product=>product.cat==='tees').map(product=>product.price),[28,28]);
+const set=products.products.find(product=>product.id===5);
+assert.equal(set.price,45);assert.deepEqual(set.options.map(option=>option.price),[65,45]);
 console.log('Local Worker smoke checks passed: three pages, legacy redirects, trailing slashes, 404, protected admin assets/API, config and seeded D1 catalog.');

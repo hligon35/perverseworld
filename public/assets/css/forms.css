@@ -31,3 +31,28 @@ body[data-site-page=home] .products{grid-template-columns:minmax(0,1fr);max-widt
 @media(max-width:760px){.nav .menu-mobile{position:absolute;inset:100% 0 auto;transform:none}}
 @media(max-width:400px){body[data-site-page=home] .products{grid-template-columns:1fr}}
 @media(max-width:600px){.pw-grid{grid-template-columns:1fr}}
+.product-image{background:#f7f7f5}
+.product-image img{object-fit:contain}
+.modal-gallery{min-width:0;background:#f7f7f5;display:flex;flex-direction:column}
+.modal-gallery>img{width:100%;height:min(62vh,600px);object-fit:contain;flex:1;min-height:0}
+.product-views{display:flex;flex-wrap:wrap;gap:7px;padding:14px;border-top:1px solid #d5d5cc;background:#191c16}
+.product-views button{border:1px solid #62665a;background:transparent;color:var(--ink);padding:10px 12px;font:700 12px var(--body)}
+.product-views button[aria-pressed=true]{border-color:var(--orange);background:var(--orange);color:#111210}
+@media(max-width:760px){.modal-gallery>img{height:320px;flex:none}.product-views{padding:10px}}
+.product-open{display:block;height:100%;width:100%}
+button.product-open,button.product-name{padding:0;border:0;background:transparent;color:inherit;text-align:left}
+.product-open img{height:100%;width:100%}
+.price{white-space:normal}
+.product-detail>.pw-breadcrumb{margin:0 0 38px}
+.detail-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(25px,5vw,75px);align-items:start}
+.detail-gallery{background:#f7f7f5;min-width:0}
+.detail-gallery>img{width:100%;height:min(70vh,740px);object-fit:contain}
+.detail-info h1{font:400 clamp(44px,5vw,76px)/1 var(--display);margin:18px 0}
+.detail-info p{color:var(--muted);font-size:14px;line-height:1.7}
+.detail-price{display:block;font:800 32px var(--cond);margin-bottom:25px}
+.detail-options{border:0;padding:0;margin:25px 0}
+.detail-options legend{font:800 13px var(--cond);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.detail-options>button{display:flex;align-items:center;justify-content:space-between;gap:15px;width:100%;background:#191c16;border:1px solid #555b4b;color:var(--ink);padding:16px;text-align:left;margin-bottom:8px}
+.detail-options>button[aria-pressed=true]{border-color:var(--orange);box-shadow:inset 3px 0 var(--orange)}
+.detail-info .size-buttons{flex-wrap:wrap}
+@media(max-width:760px){.detail-layout{grid-template-columns:1fr}.detail-gallery>img{height:440px}.detail-info h1{font-size:46px}}

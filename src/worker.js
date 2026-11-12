@@ -1,5 +1,6 @@
 import {legacyRedirects} from './site/routes.js';
 import {retiredProductIds} from './site/catalog-policy.js';
+import catalog from './site/products.json' with {type:'json'};
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -51,12 +52,25 @@ async function captcha(r,e,t,expectedAction){
   return {ok:false};
  }
 }
-function product(row){let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}catch{}return {id:row.id,name:row.name,sub:row.description==='Black / artwork concept'?'Black / original artwork':row.description,cat:row.category,price:row.price_cents/100,img:row.image_url,tag:row.badge,sizes,active:!!row.active}}
+function product(row){
+ let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}catch{}
+ const builtin=String(row.image_url||'').match(/^builtin:(\d+)$/);
+ const media=builtin?catalog.find(p=>p.id===Number(builtin[1])):null;
+ const ownMedia=catalog.find(p=>p.id===Number(row.id));
+ // Preserve administrator edits, while upgrading the original seeded metadata.
+ const legacyNames={2:'Worldscape Tee',3:'Green Flame Set',4:'Midnight Riot Hoodie',5:'World Logo Hoodie'};
+ const legacy=media&&row.name===legacyNames[row.id]&&(!row.updated_at||row.updated_at===row.created_at);
+ let savedPrices=[];try{const parsed=JSON.parse(row.options_json||'[]');if(Array.isArray(parsed))savedPrices=parsed;}catch{}
+ const options=ownMedia?.options?.map(option=>{const saved=savedPrices.find(item=>item?.id===option.id&&Number.isInteger(item.price_cents)&&item.price_cents>=0);return {...option,price:saved?saved.price_cents/100:option.price};});
+ return {id:row.id,name:legacy?media.name:row.name,sub:legacy?media.sub:row.description,cat:legacy?media.cat:row.category,price:options?Math.min(...options.map(option=>option.price)):legacy?media.price:row.price_cents/100,img:media?.img||row.image_url,imageRef:row.image_url,images:media?.images||[],slug:ownMedia?.slug,options,tag:row.badge,sizes,active:!!row.active};
+}
 function productInput(b){
  const x={name:clean(b.name,150),description:clean(b.description,700),category:clean(b.category,40),image_url:clean(b.image_url,1500),badge:clean(b.badge,40),price_cents:Number(b.price_cents),sizes:b.sizes||{},active:b.active===false?0:1};
  if(!x.name||!['tees','hoodies','sets','accessories'].includes(x.category)||!Number.isInteger(x.price_cents)||x.price_cents<0||x.price_cents>100000000||typeof x.sizes!=='object'||Array.isArray(x.sizes)||Object.entries(x.sizes).length>16||Object.entries(x.sizes).some(([k,v])=>!(/^[A-Za-z0-9 -]{1,16}$/.test(k)&&Number.isInteger(v)&&v>=0&&v<=100000)))throw Error('Invalid product fields');
  if(x.image_url&&!/^builtin:[2-5]$/.test(x.image_url)&&!/^https:\/\/[\w.-]+(?:\/[\w\-./%?=&+#]*)?$/.test(x.image_url))throw Error('Image must be HTTPS or an available built-in image (2–5)');
- return {...x,sizes_json:JSON.stringify(x.sizes)};
+ const prices=b.option_prices||[];
+ if(!Array.isArray(prices)||prices.length>2||prices.some(p=>!p||!['hoodie','sweats'].includes(p.id)||!Number.isInteger(p.price_cents)||p.price_cents<0||p.price_cents>100000000)||new Set(prices.map(p=>p.id)).size!==prices.length)throw Error('Invalid item prices');
+ return {...x,sizes_json:JSON.stringify(x.sizes),options_json:JSON.stringify(prices)};
 }
 async function sendEmail(e,to,subject,html,text,from){
  if(!e.RESEND_API_KEY)throw Error('Email provider not configured');
@@ -98,13 +112,14 @@ async function adminAPI(r,e,path,identity){
  }
  if(method==='GET'&&path==='/api/admin/products')return json({items:(await d.prepare('SELECT * FROM products ORDER BY id DESC LIMIT 500').all()).results.map(product)});
  if(['POST','PUT'].includes(method)&&/^\/api\/admin\/products(?:\/\d+)?$/.test(path)){
-  const b=productInput(await parse(r)),id=Number(path.split('/')[4]);
+  const input=await parse(r);let b;try{b=productInput(input)}catch(error){return fail(error.message)}
+  const id=Number(path.split('/')[4]);
   if(method==='PUT'){
    if(!Number.isInteger(id)||id<=0)return fail('Invalid product ID');
-   const result=await d.prepare('UPDATE products SET name=?,description=?,category=?,price_cents=?,image_url=?,badge=?,sizes_json=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.active,id).run();
+   const result=await d.prepare('UPDATE products SET name=?,description=?,category=?,price_cents=?,image_url=?,badge=?,sizes_json=?,options_json=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active,id).run();
    if(!result.meta.changes)return fail('Product not found',404);return json({ok:true,id});
   }
-  const result=await d.prepare('INSERT INTO products(name,description,category,price_cents,image_url,badge,sizes_json,active) VALUES(?,?,?,?,?,?,?,?)').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.active).run();
+  const result=await d.prepare('INSERT INTO products(name,description,category,price_cents,image_url,badge,sizes_json,options_json,active) VALUES(?,?,?,?,?,?,?,?,?)').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active).run();
   return json({ok:true,id:result.meta.last_row_id},201);
  }
  if(method==='GET'&&path==='/api/admin/submissions')return json({items:(await d.prepare('SELECT * FROM submissions ORDER BY id DESC LIMIT 250').all()).results});
