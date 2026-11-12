@@ -57,12 +57,29 @@ test('signed Access identity can load dashboard and JavaScript as separate prote
  try{
   globalThis.fetch=async()=>Response.json({keys:[jwk]});
   const env={...base,ADMIN_ACCESS_ISSUER:issuer,ADMIN_ACCESS_AUD:'test-app',ADMIN_ALLOWED_EMAILS:'owner@example.com',ASSETS:{fetch:async request=>new Response(new URL(request.url).pathname)}};
-  for(const path of ['/admin','/admin/','/admin/index.html','/admin/admin.js']){
+  for(const path of ['/admin/','/admin/index.html','/admin/admin.js']){
    const response=await worker.fetch(new Request('https://perverseworld.com'+path,{headers:{'cf-access-jwt-assertion':input+'.'+signature}}),env);
-   assert.equal(response.status,200);assert.equal(await response.text(),path);
+   assert.equal(response.status,200);assert.equal(await response.text(),path==='/admin/'?'/admin':path);
    assert.equal((await worker.fetch(new Request('https://perverseworld.com'+path),env)).status,401);
   }
  }finally{globalThis.fetch=original}
+});
+
+test('admin entry URLs reach the apex Access-protected path before authentication',async()=>{
+ let assets=0;
+ const env={...base,ASSETS:{fetch:async()=>{assets++;return new Response('PRIVATE')}}};
+ for(const [input,location] of [
+  ['https://perverseworld.com/admin','https://perverseworld.com/admin/'],
+  ['https://www.perverseworld.com/admin','https://perverseworld.com/admin/'],
+  ['https://www.perverseworld.com/admin/','https://perverseworld.com/admin/'],
+  ['https://www.perverseworld.com/admin/admin.js','https://perverseworld.com/admin/admin.js']
+ ]){
+  const response=await worker.fetch(new Request(input),env);
+  assert.equal(response.status,308);assert.equal(response.headers.get('location'),location);
+ }
+ assert.equal(assets,0);
+ assert.equal((await worker.fetch(new Request('https://perverseworld.com/admin/'),env)).status,503);
+ assert.equal((await worker.fetch(new Request('https://www.perverseworld.com/api/admin/session'),env)).status,503);
 });
 
 const verificationEnv={

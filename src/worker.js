@@ -159,11 +159,24 @@ export default {
     return new Response('You have been unsubscribed from Perverse World updates.',{headers:{'content-type':'text/plain; charset=utf-8'}});
    }
    if(path==='/admin'||path.startsWith('/admin/')||path.startsWith('/api/admin/')){
+    // The Access application protects the apex /admin/ path. Send browser visits
+    // there before requiring its assertion; never serve protected content here.
+    if(['GET','HEAD'].includes(r.method)&&(path==='/admin'||path.startsWith('/admin/'))){
+     const canonical=new URL(e.PUBLIC_BASE_URL);
+     if(url.origin!==canonical.origin||path==='/admin'){
+      canonical.pathname=path==='/admin'?'/admin/':path;
+      canonical.search=url.search;
+      return Response.redirect(canonical,308);
+     }
+    }
     let identity;try{identity=await verifyAccess(r,e)}catch(x){return fail(x.message,503)}
     if(!identity)return fail('Unauthorized: Cloudflare Access authentication required',401);
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
     if(path.startsWith('/api/admin/'))return await adminAPI(r,e,path,identity);
     if(r.method!=='GET')return fail('Method not allowed',405);
+    // Assets use drop-trailing-slash. Request the clean internal asset URL so
+    // /admin/ returns the dashboard instead of redirecting back to /admin.
+    if(path==='/admin/')return e.ASSETS.fetch(new Request(new URL('/admin',url),r));
     return e.ASSETS.fetch(r);
    }
    if(path.startsWith('/api/')){

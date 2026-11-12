@@ -46,6 +46,12 @@ Use `npm run deploy` as the connected deployment command. Wrangler's custom buil
 
 The guard accepts the nonsecret acknowledgement `CLOUDFLARE_CONFIGURATION_VERIFIED=true` from the process environment, an untracked root `.env` (loaded for local commands), or `[vars]` in `wrangler.toml`, in that order. An explicitly set process value, including `false` or an empty value, overrides file values. For Cloudflare, process variables belong under **Settings > Build > Build variables and secrets**; **Settings > Variables & Secrets** configures the deployed Worker runtime and does not by itself set the build process environment. Your local `.env` is intentionally ignored by Git and is not uploaded to Cloudflare. No secret values are printed by the guard.
 
+### Admin sign-in
+
+Open `https://perverseworld.com/admin/` and sign in through Cloudflare Access with an allowlisted admin email. A path policy for `/admin/*` can miss bare `/admin`: the Worker redirects that entry point to `/admin/`, and `www` admin document/asset visits to the apex domain, before serving any protected content. After authentication, `/admin/` resolves the internal clean asset URL without a trailing-slash redirect loop. All dashboard content, assets and APIs still require a valid signed Access assertion.
+
+Ensure the Access application covers the apex `/admin/` and `/admin/*` paths plus `/api/admin/*`, with the application's audience matching `ADMIN_ACCESS_AUD` and its team URL matching `ADMIN_ACCESS_ISSUER`. These Worker variables do not create an Access application or login policy. If the browser returns a 401 after a completed Access login, check the audience, issuer and signed-in email against the Worker settings. Unauthenticated API calls continue to fail closed.
+
 ```bash
 npm run db:remote
 # Only after the remote checks above (PowerShell):

@@ -16,7 +16,10 @@ for(const [path,destination] of Object.entries(legacyRedirects)){
   assert.equal(response.status,301,path);
   assert.equal(response.headers.get('location'),base+destination,path);
 }
-for(const path of ['/admin','/admin/','/admin/admin.js','/api/admin/products']){
+const adminEntry=await fetch(base+'/admin',{redirect:'manual'});
+assert.equal(adminEntry.status,308);
+assert.equal(adminEntry.headers.get('location'),'https://perverseworld.com/admin/');
+for(const path of ['/admin/','/admin/admin.js','/api/admin/products']){
   assert.ok([401,503].includes((await fetch(base+path)).status),path);
 }
 const config=await (await fetch(base+'/api/config')).json();
