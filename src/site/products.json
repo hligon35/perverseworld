@@ -3,36 +3,146 @@
     "id": 2,
     "name": "Worldscape Tee",
     "sub": "White / landscape print",
-    "price": 38,
+    "price": 28,
     "cat": "tees",
     "tag": "NEW DROP",
-    "img": "/assets/images/worldscape-tee.jpg"
+    "img": "/assets/images/worldscape-tee-front.jpeg",
+    "images": [
+      {
+        "src": "/assets/images/worldscape-tee-front.jpeg",
+        "label": "Front"
+      },
+      {
+        "src": "/assets/images/worldscape-tee-back.jpeg",
+        "label": "Back"
+      },
+      {
+        "src": "/assets/images/worldscape-tee-model.png",
+        "label": "On model"
+      }
+    ],
+    "slug": "worldscape-tee"
   },
   {
     "id": 3,
-    "name": "Green Flame Set",
-    "sub": "Gray / matching streetwear",
-    "price": 78,
-    "cat": "sets",
+    "name": "Perverse Puppeteer Tee",
+    "sub": "Black / puppeteer graphic",
+    "price": 28,
+    "cat": "tees",
     "tag": "HEAD TURNER",
-    "img": "/assets/images/green-flame-set.jpg"
+    "img": "/assets/images/perverse-puppeteer-tee-front.jpeg",
+    "images": [
+      {
+        "src": "/assets/images/perverse-puppeteer-tee-front.jpeg",
+        "label": "Front"
+      },
+      {
+        "src": "/assets/images/perverse-puppeteer-tee-back.jpeg",
+        "label": "Back"
+      },
+      {
+        "src": "/assets/images/perverse-puppeteer-tee-model.png",
+        "label": "On model"
+      }
+    ],
+    "slug": "perverse-puppeteer-tee"
   },
   {
     "id": 4,
-    "name": "Midnight Riot Hoodie",
+    "name": "Midnight Terror Hoodie",
     "sub": "Black / graphic hoodie",
     "price": 65,
     "cat": "hoodies",
     "tag": "HOT ITEM",
-    "img": "/assets/images/midnight-riot-hoodie.jpg"
+    "img": "/assets/images/midnight-terror-hoodie-front.jpeg",
+    "images": [
+      {
+        "src": "/assets/images/midnight-terror-hoodie-front.jpeg",
+        "label": "Front"
+      },
+      {
+        "src": "/assets/images/midnight-terror-hoodie-back.jpeg",
+        "label": "Back"
+      },
+      {
+        "src": "/assets/images/midnight-terror-hoodie-model.png",
+        "label": "On model"
+      }
+    ],
+    "slug": "midnight-terror-hoodie"
   },
   {
     "id": 5,
-    "name": "World Logo Hoodie",
-    "sub": "Light gray / logo front",
-    "price": 65,
-    "cat": "hoodies",
+    "name": "World Logo Set",
+    "sub": "Black / hoodie and sweatpants",
+    "price": 45,
+    "cat": "sets",
     "tag": "CLASSIC",
-    "img": "/assets/images/world-logo-hoodie.jpg"
+    "img": "/assets/images/world-logo-hoodie-set-model-front.png",
+    "images": [
+      {
+        "src": "/assets/images/world-logo-hoodie-set-model-front.png",
+        "label": "Complete look · front"
+      },
+      {
+        "src": "/assets/images/world-logo-hoodie-set-model-back.png",
+        "label": "Complete look · back"
+      }
+    ],
+    "slug": "world-logo-set",
+    "options": [
+      {
+        "id": "hoodie",
+        "name": "World Logo Hoodie",
+        "sub": "Black / logo front",
+        "cat": "hoodies",
+        "price": 65,
+        "img": "/assets/images/world-logo-hoodie-front.jpeg",
+        "images": [
+          {
+            "src": "/assets/images/world-logo-hoodie-front.jpeg",
+            "label": "Front"
+          },
+          {
+            "src": "/assets/images/world-logo-hoodie-back.jpeg",
+            "label": "Back"
+          },
+          {
+            "src": "/assets/images/world-logo-hoodie-set-model-front.png",
+            "label": "On model · front"
+          },
+          {
+            "src": "/assets/images/world-logo-hoodie-set-model-back.png",
+            "label": "On model · back"
+          }
+        ]
+      },
+      {
+        "id": "sweats",
+        "name": "World Logo Sweatpants",
+        "sub": "Black / logo detail",
+        "cat": "sets",
+        "price": 45,
+        "img": "/assets/images/world-logo-sweats-front.jpeg",
+        "images": [
+          {
+            "src": "/assets/images/world-logo-sweats-front.jpeg",
+            "label": "Front"
+          },
+          {
+            "src": "/assets/images/world-logo-sweats-back.jpeg",
+            "label": "Back"
+          },
+          {
+            "src": "/assets/images/world-logo-hoodie-set-model-front.png",
+            "label": "Complete look · front"
+          },
+          {
+            "src": "/assets/images/world-logo-hoodie-set-model-back.png",
+            "label": "Complete look · back"
+          }
+        ]
+      }
+    ]
   }
 ]

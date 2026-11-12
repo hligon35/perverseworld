@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {retiredProductIds} from '../src/site/catalog-policy.js';
+import {retiredProductIds,homeOptionId} from '../src/site/catalog-policy.js';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 const products=JSON.parse(await read('src/site/products.json'));
 const storefront=await read('public/assets/js/storefront.js');
@@ -19,26 +19,26 @@ function shop(storage,category='all',catalog=true,featuredId=0){
   nodes.shop.dataset.category=category;
   nodes.shop.dataset.featuredId=String(featuredId);
   if(!catalog){delete nodes.shop;delete nodes.products;delete nodes.sort;}
-  const context={window:{PW_CATALOG:products,PW_CATALOG_CONFIG:{retiredProductIds}},sessionStorage:storage,setTimeout:()=>{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[],addEventListener(){}}};
+  const context={window:{PW_CATALOG:products,PW_CATALOG_CONFIG:{retiredProductIds,homeOptionId}},sessionStorage:storage,setTimeout:()=>{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[],addEventListener(){}}};
   vm.runInNewContext(storefront,context);return {nodes,context};
 }
 test('old and API-only bags survive independent pages and refreshes',()=>{
   let value=JSON.stringify([{id:2,size:'M'},{id:99,name:'API item',price:42,img:'https://example.com/product.jpg',size:'XL'}]);
   const storage={getItem:()=>value,setItem:(_,text)=>value=text};
   const first=shop(storage);
-  assert.equal(first.nodes.cartCount.textContent,2);assert.equal(first.nodes.subtotal.textContent,'$80.00');
+  assert.equal(first.nodes.cartCount.textContent,2);assert.equal(first.nodes.subtotal.textContent,'$70.00');
   first.context.window.PWStore.updateCatalog([{id:99,name:'Live item',cat:'tees',price:45,img:'https://example.com/product.jpg'}]);
   for(const category of ['tees','hoodies','sets']){
     const next=shop(storage,category,false);
     assert.equal(next.nodes.cartCount.textContent,2);
-    assert.equal(next.nodes.subtotal.textContent,'$83.00');
+    assert.equal(next.nodes.subtotal.textContent,'$73.00');
     assert.match(next.nodes.cartItems.innerHTML,/Live item/);
   }
 });
 test('collection filtering applies after live API refresh; content is escaped',()=>{
   const storage={getItem:()=>'{bad',setItem(){}};
   const {context,nodes}=shop(storage,'hoodies');
-  assert.match(nodes.products.innerHTML,/Midnight Riot Hoodie/);assert.doesNotMatch(nodes.products.innerHTML,/Worldscape Tee/);
+  assert.match(nodes.products.innerHTML,/Midnight Terror Hoodie/);assert.doesNotMatch(nodes.products.innerHTML,/Worldscape Tee/);
   context.window.PWStore.updateCatalog([{id:9,name:'<img onerror=bad>',cat:'hoodies',sub:'<script>',price:60,img:'javascript:bad'},{id:10,name:'TEE',cat:'tees',price:30}]);
   assert.match(nodes.products.innerHTML,/&lt;img onerror=bad&gt;/);assert.doesNotMatch(nodes.products.innerHTML,/javascript:bad|>TEE</);
   assert.equal(nodes.cartCount.textContent,0);
@@ -51,7 +51,7 @@ test('storage failures do not break pages without a catalog',()=>{
 test('home keeps only the World Logo Hoodie after API refresh and does not substitute other products',()=>{
   const {nodes,context}=shop({getItem:()=>'[]',setItem(){}},'all',true,5);
   assert.match(nodes.products.innerHTML,/World Logo Hoodie/);
-  assert.doesNotMatch(nodes.products.innerHTML,/Worldscape Tee|Green Flame Set|Midnight Riot Hoodie/);
+  assert.doesNotMatch(nodes.products.innerHTML,/Worldscape Tee|Perverse Puppeteer Tee|Midnight Terror Hoodie|>World Logo Set</);
   context.window.PWStore.updateCatalog([...products].reverse().map(p=>({...p,img:'builtin:'+p.id})));
   assert.equal((nodes.products.innerHTML.match(/<article /g)||[]).length,1);
   assert.match(nodes.products.innerHTML,/World Logo Hoodie/);
@@ -67,6 +67,19 @@ test('retired items cannot return through stale API responses or saved bags',()=
   context.window.PWStore.updateCatalog([...products,{id:1,name:'Otherworld Graphic Tee',cat:'tees',price:35,img:'builtin:1'},{id:6,name:'Possessed Hand Graphic',cat:'sets',price:30,img:'builtin:6'}]);
   assert.doesNotMatch(nodes.products.innerHTML,/Otherworld Graphic Tee|Possessed Hand Graphic/);
   assert.equal(nodes.cartCount.textContent,1);
+});
+test('set pieces keep separate names, prices, images and sizes in the bag across pages',()=>{
+  let saved='[]';const storage={getItem:()=>saved,setItem:(_,value)=>saved=value};
+  const {context,nodes}=shop(storage);
+  const set=context.window.PWStore.getProduct(5);
+  context.window.PWStore.addItem(context.window.PWStore.saleItem(set,'hoodie'),'M');
+  context.window.PWStore.addItem(context.window.PWStore.saleItem(set,'sweats'),'L');
+  assert.equal(nodes.cartCount.textContent,2);assert.equal(nodes.subtotal.textContent,'$110.00');
+  const restored=shop(storage,'all',false);
+  restored.context.window.PWStore.updateCatalog(products.map(p=>({...p,img:'builtin:'+p.id})));
+  assert.match(restored.nodes.cartItems.innerHTML,/World Logo Hoodie/);assert.match(restored.nodes.cartItems.innerHTML,/World Logo Sweatpants/);
+  assert.match(restored.nodes.cartItems.innerHTML,/Size M \/ \$65\.00/);assert.match(restored.nodes.cartItems.innerHTML,/Size L \/ \$45\.00/);
+  assert.equal(restored.nodes.subtotal.textContent,'$110.00');
 });
 test('forms mount only existing challenges, send matching tokens, and reset after success/failure',async()=>{
   for(const action of ['newsletter','contact']){

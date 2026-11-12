@@ -4,6 +4,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {routes} from '../src/site/routes.js';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import catalog from '../src/site/products.json' with {type:'json'};
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 test('all routes contain complete, distinct static content without page-switching scripts',async()=>{
   assert.deepEqual(routes.map(route=>route.path),['/','/shop','/contact']);
@@ -46,6 +47,22 @@ test('unknown URLs use a 404 document and protected routes always execute the Wo
   assert.match(config,/not_found_handling = "404-page"/);
   assert.match(config,/run_worker_first = \["\/api\/\*", "\/admin", "\/admin\/\*", "\/unsubscribe",/);
   assert.doesNotMatch(await read('public/assets/css/pages.css'),/body\[data-site-page[^\{]*\{[^}]*display:\s*none/);
+});
+test('all product galleries and product URLs resolve; approved prices are visible on product pages',async()=>{
+  for(const p of catalog){
+    const html=await read('dist/shop/'+p.slug+'.html');
+    assert.match(html,/id="productDetail"/);assert.match(html,/id="launchCloud"/);
+    for(const item of [p,...(p.options||[])]){
+      for(const view of item.images){assert.ok((await stat(new URL('../public'+view.src,import.meta.url))).size>0,view.src);}
+    }
+  }
+  const shop=await read('dist/shop.html'),home=await read('dist/index.html');
+  assert.match(shop,/From \$45\.00/);assert.doesNotMatch(shop,/Green Flame Set|Midnight Riot Hoodie/);
+  const set=await read('dist/shop/world-logo-set.html');
+  assert.match(set,/World Logo Hoodie<\/span><strong>\$65\.00/);
+  assert.match(set,/World Logo Sweatpants<\/span><strong>\$45\.00/);
+  assert.match(home,/World Logo Hoodie/);assert.doesNotMatch(home,/From \$45\.00/);
+  assert.deepEqual(catalog.filter(p=>p.cat==='tees').map(p=>p.price),[28,28]);
 });
 test('automatic Cloudflare releases fail before bundling with unverified production configuration',()=>{
   const result=spawnSync(process.execPath,[fileURLToPath(new URL('../scripts/prepare-worker.mjs',import.meta.url))],{env:{...process.env,WORKERS_CI:'1',CLOUDFLARE_CONFIGURATION_VERIFIED:''},encoding:'utf8'});

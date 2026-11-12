@@ -22,6 +22,22 @@ test('public catalog excludes retired rows even before the archive migration run
  assert.equal(response.status,200);
  assert.deepEqual((await response.json()).products.map(p=>p.id),[2,3,4,5]);
 });
+test('built-in catalog supplies new images, galleries and approved set prices to old and migrated rows',async()=>{
+ const records=[
+  {id:2,name:'Worldscape Tee',description:'White / landscape print',category:'tees',price_cents:3800,image_url:'builtin:2',active:1},
+  {id:3,name:'Green Flame Set',description:'Gray / matching streetwear',category:'sets',price_cents:7800,image_url:'builtin:3',active:1},
+  {id:5,name:'World Logo Set',description:'Set',category:'sets',price_cents:4500,image_url:'builtin:5',active:1,options_json:'[{"id":"hoodie","price_cents":6500},{"id":"sweats","price_cents":4500}]'}
+ ];
+ const env={...base,DB:{prepare:()=>({all:async()=>({results:records})})}};
+ const rows=(await (await worker.fetch(new Request('https://perverseworld.com/api/products'),env)).json()).products;
+ assert.equal(rows[0].price,28);assert.equal(rows[1].price,28);assert.equal(rows[1].name,'Perverse Puppeteer Tee');
+ assert.match(rows[0].img,/worldscape-tee-front\.jpeg$/);assert.equal(rows[0].images.length,3);
+ assert.equal(rows[2].price,45);assert.deepEqual(rows[2].options.map(p=>p.price),[65,45]);
+ assert.match(rows[2].options[1].img,/world-logo-sweats-front\.jpeg$/);
+ records[2].image_url='https://example.com/custom-set.jpg';
+ const custom=(await (await worker.fetch(new Request('https://perverseworld.com/api/products'),env)).json()).products[2];
+ assert.equal(custom.img,'https://example.com/custom-set.jpg');assert.equal(custom.options.length,2);assert.equal(custom.slug,'world-logo-set');
+});
 test('rejects cross-origin mutations',async()=>{
  const res=await worker.fetch(new Request('https://perverseworld.com/api/submissions',{method:'POST',headers:{origin:'https://evil.example'}}),base);
  assert.equal(res.status,403);
@@ -69,6 +85,14 @@ test('signed Access identity can load dashboard and JavaScript as separate prote
    assert.equal(response.status,200);assert.equal(await response.text(),path==='/admin/'?'/admin':path);
    assert.equal((await worker.fetch(new Request('https://perverseworld.com'+path),env)).status,401);
   }
+  let saved=null,writes=0;
+  env.DB={prepare:sql=>({bind(...values){saved={sql,values};return this;},async run(){writes++;return {meta:{changes:1}};}})};
+  const body={name:'World Logo Set',category:'sets',price_cents:4500,image_url:'builtin:5',sizes:{M:10},option_prices:[{id:'hoodie',price_cents:6500},{id:'sweats',price_cents:4500}]};
+  const save=payload=>worker.fetch(new Request('https://perverseworld.com/api/admin/products/5',{method:'PUT',headers:{'content-type':'application/json',origin:'https://perverseworld.com','cf-access-jwt-assertion':input+'.'+signature},body:JSON.stringify(payload)}),env);
+  assert.equal((await save(body)).status,200);assert.match(saved.sql,/options_json/);
+  assert.deepEqual(JSON.parse(saved.values[7]),body.option_prices);
+  assert.equal((await save({...body,option_prices:[{id:'sweats',price_cents:-1}]})).status,400);
+  assert.equal(writes,1);
  }finally{globalThis.fetch=original}
 });
 

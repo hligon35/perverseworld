@@ -44,7 +44,7 @@
       n.dataset.pwIcon=name;n.classList.add('pw-icon-action');
     });
     document.querySelectorAll('[data-goto]').forEach(n=>addIcon(n,goIcons[n.dataset.goto]||'arrow_forward'));
-    document.querySelectorAll('button.add[data-id]').forEach(n=>addIcon(n,'add',{replace:true}));
+    document.querySelectorAll('.add').forEach(n=>addIcon(n,'add',{replace:true}));
     document.querySelectorAll('button[data-remove]').forEach(n=>addIcon(n,'delete_outline'));
     document.querySelectorAll('button,a').forEach(n=>{
       if(n.dataset.pwIcon||n.closest('[data-page]'))return;
