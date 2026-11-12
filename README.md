@@ -15,6 +15,8 @@ Pages share the original visual identity and original product photography, extra
 
 The storefront has exactly three pages. Header and footer components share Home, Shop and Contact navigation; desktop shows links and mobile shows a hamburger menu. The brand story lives on Home at `/#story`. Previous `/about` links redirect there, while `/collections` and its former category pages redirect to `/shop`, where category filters remain available. Storefront buttons have no arrow glyphs, and Instagram links have been removed.
 
+Visitors first see the coming-soon landing screen on each storefront route. Clicking or tapping the mushroom cloud on the original logo seven times within a rolling five-second window reveals the site. Entry persists in session storage across Home, Shop, Contact and refreshes; if browser storage is unavailable, entry still works on the current page. Catalog API requests and Turnstile widgets start after entry. This launch reveal is a browser interaction, not an authorization mechanism; admin documents and APIs retain Cloudflare Access protection independently. Home and Shop navigation icons are rendered in the shared components, with consistent footer icon and label alignment.
+
 ## Development
 
 ```bash
@@ -59,7 +61,7 @@ $env:CLOUDFLARE_CONFIGURATION_VERIFIED = "true"
 npm run deploy
 ```
 
-Current shopping bag and checkout are a **demo**, not a payment-integrated commerce system. Confirm product prices and inventory before launch.
+The bag's **Ask about your bag** action opens Contact with an order enquiry and selected pieces prefilled. Customers send their enquiry through the verified contact form; no payment is collected. Product details and prices remain editable through the protected admin.
 
 ## Structure
 

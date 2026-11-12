@@ -11,15 +11,20 @@
   <link rel="stylesheet" href="/assets/css/pages.css">
   <link rel="stylesheet" href="/assets/css/forms.css">
   <link rel="stylesheet" href="/brand-ui.css">
+  <link rel="stylesheet" href="/assets/css/launch.css">
+  <script src="/assets/js/launch.js" defer></script>
   <script src="/assets/js/catalog.js" defer></script>
   <script src="/assets/js/storefront.js" defer></script>
   <script src="/assets/js/forms.js" defer></script>
   <script src="/brand-ui.js" defer></script>
 </head>
 <body data-site-page="{{page}}">
+  {{launch}}
+  <div id="storefront" hidden>
   {{header}}
   <main id="top">{{content}}</main>
   {{footer}}
   {{bag}}
+  </div>
 </body>
 </html>

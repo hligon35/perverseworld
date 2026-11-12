@@ -50,7 +50,7 @@ async function captcha(r,e,t,expectedAction){
   return {ok:false};
  }
 }
-function product(row){let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}catch{}return {id:row.id,name:row.name,sub:row.description,cat:row.category,price:row.price_cents/100,img:row.image_url,tag:row.badge,sizes,active:!!row.active}}
+function product(row){let sizes={};try{sizes=JSON.parse(row.sizes_json||'{}')}catch{}return {id:row.id,name:row.name,sub:row.description==='Black / artwork concept'?'Black / original artwork':row.description,cat:row.category,price:row.price_cents/100,img:row.image_url,tag:row.badge,sizes,active:!!row.active}}
 function productInput(b){
  const x={name:clean(b.name,150),description:clean(b.description,700),category:clean(b.category,40),image_url:clean(b.image_url,1500),badge:clean(b.badge,40),price_cents:Number(b.price_cents),sizes:b.sizes||{},active:b.active===false?0:1};
  if(!x.name||!['tees','hoodies','sets','accessories'].includes(x.category)||!Number.isInteger(x.price_cents)||x.price_cents<0||x.price_cents>100000000||typeof x.sizes!=='object'||Array.isArray(x.sizes)||Object.entries(x.sizes).length>16||Object.entries(x.sizes).some(([k,v])=>!(/^[A-Za-z0-9 -]{1,16}$/.test(k)&&Number.isInteger(v)&&v>=0&&v<=100000)))throw Error('Invalid product fields');

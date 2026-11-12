@@ -21,7 +21,8 @@ await cp(new URL('public/',root),new URL('dist/',root),{recursive:true});
 await write('dist/assets/js/catalog.js',`// Generated from src/site/products.json.\nwindow.PW_CATALOG = ${JSON.stringify(products)};\n`);
 
 for(const route of routes){
-  const nav=navigation.map(([label,path])=>`<a href="${path}"${path===route.path?' class="is-current" aria-current="page"':''}>${label}</a>`).join('');
+  const icons={Home:'home',Shop:'storefront',Contact:'mail'};
+  const nav=navigation.map(([label,path])=>`<a href="${path}" class="pw-nav-link${path===route.path?' is-current':''}"${path===route.path?' aria-current="page"':''} data-pw-icon="${icons[label]}"><span class="material-symbols-outlined" aria-hidden="true">${icons[label]}</span><span>${label}</span></a>`).join('');
   const category='all', limit=route.page==='home'?3:0;
   const selected=products.filter(p=>category==='all'||p.cat===category).slice(0,limit||undefined);
   const cards=selected.map(p=>`<article class="product"><div class="product-image"><img src="${escapeHTML(p.img)}" alt="${escapeHTML(p.name)}" loading="lazy"><span class="tag">${escapeHTML(p.tag)}</span><button class="add" data-id="${p.id}" aria-label="View ${escapeHTML(p.name)}">+</button></div><div class="product-info"><div><div class="product-name">${escapeHTML(p.name)}</div><div class="product-sub">${escapeHTML(p.sub)}</div></div><div class="price">$${p.price.toFixed(2)}</div></div></article>`).join('');
@@ -32,7 +33,7 @@ for(const route of routes){
   const content=fill(await read(`src/site/pages/${route.page}.html`),values);
   const layout=fill(await read('src/site/layout.html'),{
     ...Object.fromEntries(Object.entries(route).map(([k,v])=>[k,escapeHTML(v)])),
-    header:await component('header',{navigation:nav}),footer:await component('footer',{navigation:nav}),bag:await component('bag'),content
+    header:await component('header',{navigation:nav}),footer:await component('footer',{navigation:nav}),bag:await component('bag'),launch:await component('launch'),content
   });
   await write(`dist/${route.path==='/'?'index':route.path.slice(1)}.html`,layout);
 }

@@ -2,6 +2,14 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
+  if($('contactForm')&&new URLSearchParams(window.location?.search||'').get('enquiry')==='bag'){
+    const form=$('contactForm');
+    form.elements.subject.value='Order enquiry';
+    try{
+      const bag=JSON.parse(sessionStorage.getItem('pw-cart')||'[]');
+      if(Array.isArray(bag)&&bag.length)form.elements.message.value='I would like to ask about these pieces:\n\n'+bag.slice(0,40).map(item=>`${String(item.name||'Item').slice(0,150)} — Size ${item.size}`).join('\n');
+    }catch{}
+  }
   async function request(path,options={}){
     const response=await fetch(path,{credentials:'same-origin',...options});
     const body=await response.json().catch(()=>({}));
@@ -28,10 +36,10 @@
     };
   }
   async function boot(){
-    request('/api/products').then(body=>{if(Array.isArray(body.products))window.PWStore.updateCatalog(body.products);}).catch(error=>console.warn('Preview catalog:',error.message));
+    request('/api/products').then(body=>{if(Array.isArray(body.products))window.PWStore.updateCatalog(body.products);}).catch(error=>console.warn('Catalog unavailable:',error.message));
     if(!forms.length)return;
     let siteKey='';try{siteKey=(await request('/api/config')).turnstileSiteKey||'';}catch{}
-    if(!siteKey){forms.forEach(item=>item.status.textContent='This form opens when verification is configured.');return;}
+    if(!siteKey){forms.forEach(item=>item.status.textContent='We’re getting ready to hear from you. Please check back soon.');return;}
     const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;
     script.onload=()=>{
       for(const item of forms){
@@ -45,5 +53,6 @@
     script.onerror=()=>forms.forEach(item=>item.status.textContent='Verification is temporarily unavailable. Please try again later.');
     document.head.append(script);
   }
-  boot();
+  if($('launchGate')&&!window.PWLaunch?.isOpen())document.addEventListener('pw:entered',boot,{once:true});
+  else boot();
 })();

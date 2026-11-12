@@ -17,7 +17,7 @@ export default function App() {
   },[section, canGoBack]);
   return <SafeAreaView style={styles.screen}>
     <StatusBar barStyle="light-content" />
-    <View style={styles.top}><Text style={styles.wordmark}>PERVERSE <Text style={styles.accent}>WORLD</Text>_</Text></View>
+    <View style={styles.top}><Text style={styles.wordmark}>PERVERSE <Text style={styles.accent}>WORLD</Text></Text></View>
     <WebView key={section} ref={webRef} source={{uri: pages[section]}} style={styles.web}
       onNavigationStateChange={s => setCanGoBack(s.canGoBack)}
       startInLoadingState={true} javaScriptEnabled domStorageEnabled sharedCookiesEnabled
