@@ -1,6 +1,9 @@
 import {legacyRedirects} from './site/routes.js';
 import {retiredProductIds} from './site/catalog-policy.js';
 import catalog from './site/products.json' with {type:'json'};
+import PostalMime from 'postal-mime';
+import {newsletterTemplate} from '../public/assets/js/newsletter-template.js';
+import {verifyResendWebhook,importResendEmail,resendGet} from './mail.js';
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8,6 +11,14 @@ const parse=async r=>{const t=await r.text();if(t.length>65536)throw Error('Payl
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 const db=e=>{if(!e.DB)throw Error('D1 is not bound');return e.DB};
 const sameOrigin=(r,e)=>!r.headers.get('origin')||r.headers.get('origin')===new URL(e.PUBLIC_BASE_URL).origin;
+const mediaPath=/^\/media\/products\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/;
+const imageOK=value=>mediaPath.test(value)||/^\/assets\/images\/[\w.-]+$/.test(value)||/^https:\/\/[^\s<>"']+$/.test(value);
+async function limitedBody(stream,limit){
+ const reader=stream?.getReader();if(!reader)return new Uint8Array();
+ const parts=[];let length=0;
+ try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>limit){await reader.cancel();throw Error('Payload too large');}parts.push(value);}}finally{reader.releaseLock();}
+ const bytes=new Uint8Array(length);let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}return bytes;
+}
 const b64=s=>atob(s.replace(/-/g,'+').replace(/_/g,'/'));
 let keys={url:'',until:0,jwks:null};
 async function verifyAccess(r,e){
@@ -61,20 +72,28 @@ function product(row){
  const legacyNames={2:'Worldscape Tee',3:'Green Flame Set',4:'Midnight Riot Hoodie',5:'World Logo Hoodie'};
  const legacy=media&&row.name===legacyNames[row.id]&&(!row.updated_at||row.updated_at===row.created_at);
  let savedPrices=[];try{const parsed=JSON.parse(row.options_json||'[]');if(Array.isArray(parsed))savedPrices=parsed;}catch{}
- const options=ownMedia?.options?.map(option=>{const saved=savedPrices.find(item=>item?.id===option.id&&Number.isInteger(item.price_cents)&&item.price_cents>=0);return {...option,price:saved?saved.price_cents/100:option.price};});
- return {id:row.id,name:legacy?media.name:row.name,sub:legacy?media.sub:row.description,cat:legacy?media.cat:row.category,price:options?Math.min(...options.map(option=>option.price)):legacy?media.price:row.price_cents/100,img:media?.img||row.image_url,imageRef:row.image_url,images:media?.images||[],slug:ownMedia?.slug,options,tag:row.badge,sizes,active:!!row.active};
+ let images=[];try{images=JSON.parse(row.images_json||'[]');}catch{}if(!Array.isArray(images))images=[];
+ const gallery=images.filter(view=>!view.optionId);
+ const options=ownMedia?.options?.map(option=>{const saved=savedPrices.find(item=>item?.id===option.id&&Number.isInteger(item.price_cents)&&item.price_cents>=0);const views=images.filter(view=>view.optionId===option.id);return {...option,price:saved?saved.price_cents/100:option.price,sizes:saved?.sizes||sizes,...(views.length?{img:views[0].src,images:views}:{})};});
+ const views=gallery.length?gallery:media?.images||[];
+ return {id:row.id,name:legacy?media.name:row.name,sub:legacy?media.sub:row.description,cat:legacy?media.cat:row.category,price:options?Math.min(...options.map(option=>option.price)):legacy?media.price:row.price_cents/100,img:gallery[0]?.src||media?.img||row.image_url,imageRef:row.image_url,images:views,media:images.length?images:[...(views.length?views:[{src:row.image_url,label:'Front'}]).filter(v=>imageOK(v.src)),...(options||[]).flatMap(option=>option.images.map(view=>({...view,optionId:option.id})))],slug:ownMedia?.slug,options,tag:row.badge,sizes,active:!!row.active};
 }
+const sizesOK=sizes=>sizes&&typeof sizes==='object'&&!Array.isArray(sizes)&&Object.entries(sizes).length<=16&&Object.entries(sizes).every(([k,v])=>/^[A-Za-z0-9 -]{1,16}$/.test(k)&&Number.isInteger(v)&&v>=0&&v<=100000);
 function productInput(b){
  const x={name:clean(b.name,150),description:clean(b.description,700),category:clean(b.category,40),image_url:clean(b.image_url,1500),badge:clean(b.badge,40),price_cents:Number(b.price_cents),sizes:b.sizes||{},active:b.active===false?0:1};
  if(!x.name||!['tees','hoodies','sets','accessories'].includes(x.category)||!Number.isInteger(x.price_cents)||x.price_cents<0||x.price_cents>100000000||typeof x.sizes!=='object'||Array.isArray(x.sizes)||Object.entries(x.sizes).length>16||Object.entries(x.sizes).some(([k,v])=>!(/^[A-Za-z0-9 -]{1,16}$/.test(k)&&Number.isInteger(v)&&v>=0&&v<=100000)))throw Error('Invalid product fields');
- if(x.image_url&&!/^builtin:[2-5]$/.test(x.image_url)&&!/^https:\/\/[\w.-]+(?:\/[\w\-./%?=&+#]*)?$/.test(x.image_url))throw Error('Image must be HTTPS or an available built-in image (2–5)');
+ if(x.image_url&&!/^builtin:[2-5]$/.test(x.image_url)&&!imageOK(x.image_url))throw Error('Choose an uploaded image, a site image or an HTTPS URL');
+ const images=b.images;
+ if(images!==undefined&&(!Array.isArray(images)||images.length>24||images.some(view=>!view||!imageOK(view.src)||typeof view.label!=='string'||view.label.length>60||!['','hoodie','sweats'].includes(view.optionId||''))))throw Error('Invalid product images');
  const prices=b.option_prices||[];
  if(!Array.isArray(prices)||prices.length>2||prices.some(p=>!p||!['hoodie','sweats'].includes(p.id)||!Number.isInteger(p.price_cents)||p.price_cents<0||p.price_cents>100000000)||new Set(prices.map(p=>p.id)).size!==prices.length)throw Error('Invalid item prices');
- return {...x,sizes_json:JSON.stringify(x.sizes),options_json:JSON.stringify(prices)};
+ const optionSizes=b.option_sizes||{};
+ if(Object.keys(optionSizes).some(id=>!['hoodie','sweats'].includes(id)||!sizesOK(optionSizes[id])))throw Error('Invalid item stock');
+ return {...x,sizes_json:JSON.stringify(x.sizes),options_json:JSON.stringify(prices.map(p=>({...p,...(optionSizes[p.id]?{sizes:optionSizes[p.id]}:{})}))),images_json:images===undefined?null:JSON.stringify(images.map(v=>({src:v.src,label:clean(v.label,60),...(v.optionId?{optionId:v.optionId}:{})})))};
 }
-async function sendEmail(e,to,subject,html,text,from){
+async function sendEmail(e,to,subject,html,text,from,headers){
  if(!e.RESEND_API_KEY)throw Error('Email provider not configured');
- const res=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+e.RESEND_API_KEY,'content-type':'application/json'},body:JSON.stringify({from:from||e.FROM_EMAIL,to:[to],subject,html,text})});
+ const res=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+e.RESEND_API_KEY,'content-type':'application/json'},body:JSON.stringify({from:from||e.FROM_EMAIL,to:[to],subject,html,text,...(headers?{headers}:{})})});
  if(!res.ok)throw Error('Email provider rejected request ('+res.status+')');return res.json();
 }
 async function publicAPI(r,e,path){
@@ -105,6 +124,24 @@ async function publicAPI(r,e,path){
 async function adminAPI(r,e,path,identity){
  const d=db(e),method=r.method;
  if(method==='GET'&&path==='/api/admin/session')return json({email:identity});
+ if(method==='POST'&&path==='/api/admin/mailbox/sync'){
+  if(!e.RESEND_API_KEY)return fail('Add RESEND_API_KEY as a Worker secret to connect Resend mail.',503);
+  const body=await parse(r),after=clean(body.after,40);if(after&&!/^[a-f0-9-]{36}$/i.test(after))return fail('Invalid mail cursor');
+  const list=await resendGet(e,'/emails/receiving?limit=20'+(after?'&after='+after:''));let imported=0;
+  for(const item of list.data||[]){if(!(item.to||[]).some(to=>String(to).toLowerCase().includes(e.INBOUND_ADDRESS||'info@perverseworld.com')))continue;await new Promise(resolve=>setTimeout(resolve,600));if(await importResendEmail(e,item.id))imported++;}
+  return json({imported,after:list.has_more?list.data?.at(-1)?.id||'':''});
+ }
+ if(method==='POST'&&path==='/api/admin/media'){
+  if(!e.PRODUCT_IMAGES)return fail('Image storage is not configured',503);
+  const type=r.headers.get('content-type')?.split(';')[0],types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+  if(!types[type])return fail('Choose a JPEG, PNG or WebP image',415);
+  const bytes=await limitedBody(r.body,5*1024*1024);
+  const valid=type==='image/jpeg'?bytes[0]===255&&bytes[1]===216&&bytes[2]===255:type==='image/png'?[137,80,78,71,13,10,26,10].every((n,i)=>bytes[i]===n):String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP';
+  if(!valid)return fail('The file is not a valid '+type+' image',415);
+  const key='products/'+crypto.randomUUID()+'.'+types[type];
+  await e.PRODUCT_IMAGES.put(key,bytes,{httpMetadata:{contentType:type,cacheControl:'public, max-age=31536000, immutable'}});
+  return json({src:'/media/'+key},201);
+ }
  if(method==='GET'&&path==='/api/admin/overview'){
   const q=async s=>(await d.prepare(s).first()).count;
   const [products,subscribers,submissions,mailbox]=await Promise.all([q('SELECT COUNT(*) AS count FROM products WHERE active=1'),q("SELECT COUNT(*) AS count FROM subscribers WHERE status='active'"),q("SELECT COUNT(*) AS count FROM submissions WHERE status='new'"),q("SELECT COUNT(*) AS count FROM mailbox WHERE status='unread'")]);
@@ -116,10 +153,10 @@ async function adminAPI(r,e,path,identity){
   const id=Number(path.split('/')[4]);
   if(method==='PUT'){
    if(!Number.isInteger(id)||id<=0)return fail('Invalid product ID');
-   const result=await d.prepare('UPDATE products SET name=?,description=?,category=?,price_cents=?,image_url=?,badge=?,sizes_json=?,options_json=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active,id).run();
+   const result=await d.prepare('UPDATE products SET name=?,description=?,category=?,price_cents=?,image_url=?,badge=?,sizes_json=?,options_json=?,active=?,images_json=COALESCE(?,images_json),updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active,b.images_json,id).run();
    if(!result.meta.changes)return fail('Product not found',404);return json({ok:true,id});
   }
-  const result=await d.prepare('INSERT INTO products(name,description,category,price_cents,image_url,badge,sizes_json,options_json,active) VALUES(?,?,?,?,?,?,?,?,?)').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active).run();
+  const result=await d.prepare('INSERT INTO products(name,description,category,price_cents,image_url,badge,sizes_json,options_json,active,images_json) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(b.name,b.description,b.category,b.price_cents,b.image_url,b.badge,b.sizes_json,b.options_json,b.active,b.images_json||'[]').run();
   return json({ok:true,id:result.meta.last_row_id},201);
  }
  if(method==='GET'&&path==='/api/admin/submissions')return json({items:(await d.prepare('SELECT * FROM submissions ORDER BY id DESC LIMIT 250').all()).results});
@@ -140,8 +177,9 @@ async function adminAPI(r,e,path,identity){
   const batch=await d.prepare("SELECT id,email,unsub_token FROM subscribers WHERE status='active' AND id NOT IN (SELECT subscriber_id FROM newsletter_deliveries WHERE newsletter_id=?) ORDER BY id LIMIT 20").bind(id).all();let sent=0,failed=0;
   for(const person of batch.results){try{
     const link=e.PUBLIC_BASE_URL+'/unsubscribe?token='+encodeURIComponent(person.unsub_token);
-    const html=letter.body_html+'<p style="font-size:12px;color:#888">Unsubscribe: <a href="'+escapeHTML(link)+'">'+escapeHTML(link)+'</a></p>';
-    const result=await sendEmail(e,person.email,letter.subject,html,letter.preheader||letter.subject);
+    const html=newsletterTemplate({...letter,baseURL:e.PUBLIC_BASE_URL,unsubscribeURL:link});
+    const text=[letter.preheader,letter.body_html.replace(/<[^>]*>/g,' '),'Shop: '+e.PUBLIC_BASE_URL+'/shop','Unsubscribe: '+link].filter(Boolean).join('\n\n');
+    const result=await sendEmail(e,person.email,letter.subject,html,text);
     await d.prepare('INSERT OR IGNORE INTO newsletter_deliveries(newsletter_id,subscriber_id,provider_id) VALUES(?,?,?)').bind(id,person.id,result.id||'').run();sent++;
    }catch{failed++}}
   await d.prepare("UPDATE newsletters SET status='sending',sent_count=(SELECT COUNT(*) FROM newsletter_deliveries WHERE newsletter_id=?),updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id,id).run();
@@ -149,12 +187,27 @@ async function adminAPI(r,e,path,identity){
   if(!remaining)await d.prepare("UPDATE newsletters SET status='sent' WHERE id=?").bind(id).run();
   return json({sent,failed,remaining});
  }
- if(method==='GET'&&path==='/api/admin/mailbox')return json({items:(await d.prepare('SELECT * FROM mailbox ORDER BY id DESC LIMIT 250').all()).results});
+ if(method==='GET'&&path==='/api/admin/mailbox'){
+  const url=new URL(r.url),folder=url.searchParams.get('folder')||'inbox';
+  const folders={inbox:"direction='inbound' AND status!='archived'",sent:"direction='outbound' AND status!='archived'",unread:"direction='inbound' AND status='unread'",archived:"status='archived'"};
+  if(!folders[folder])return fail('Invalid folder');
+  const search=clean(url.searchParams.get('q'),100),page=Math.max(0,Math.min(100000,parseInt(url.searchParams.get('page')||'0',10)||0));
+  const where=folders[folder]+(search?" AND (subject LIKE ? ESCAPE '\\' OR sender LIKE ? ESCAPE '\\' OR recipient LIKE ? ESCAPE '\\' OR body_text LIKE ? ESCAPE '\\')":'');
+  const term='%'+search.replace(/[\\%_]/g,'\\$&')+'%',args=search?[term,term,term,term]:[];
+  const total=(await d.prepare('SELECT COUNT(*) AS count FROM mailbox WHERE '+where).bind(...args).first()).count;
+  const rows=await d.prepare('SELECT id,direction,sender,recipient,subject,substr(body_text,1,160) AS snippet,status,created_at FROM mailbox WHERE '+where+' ORDER BY id DESC LIMIT 50 OFFSET ?').bind(...args,page*50).all();
+  return json({items:rows.results,total,page,folder,address:e.MAILBOX_FROM_EMAIL||'info@perverseworld.com'});
+ }
+ if(method==='GET'&&/^\/api\/admin\/mailbox\/\d+$/.test(path)){
+  const item=await d.prepare('SELECT * FROM mailbox WHERE id=?').bind(Number(path.split('/').pop())).first();return item?json({item}):fail('Message not found',404);
+ }
  if(method==='POST'&&path==='/api/admin/mailbox/reply'){
   const b=await parse(r),to=clean(b.to,254).toLowerCase(),subject=clean(b.subject,180),body=clean(b.body,6000);
   if(!emailOK(to)||!subject||!body)return fail('Valid recipient, subject and message required');
   if(!e.RESEND_API_KEY||!e.MAILBOX_FROM_EMAIL)return fail('Outbound mailbox not configured',503);
-  const result=await sendEmail(e,to,subject,'<p style="white-space:pre-wrap">'+escapeHTML(body)+'</p>',body,e.MAILBOX_FROM_EMAIL);
+  const parent=b.reply_to_id?await d.prepare("SELECT external_id FROM mailbox WHERE id=? AND direction='inbound'").bind(Number(b.reply_to_id)).first():null;
+  const messageId=parent?.external_id;const headers=messageId&&/^<[^\s<>]+>$/.test(messageId)?{'In-Reply-To':messageId,References:messageId}:undefined;
+  const result=await sendEmail(e,to,subject,'<p style="white-space:pre-wrap">'+escapeHTML(body)+'</p>',body,e.MAILBOX_FROM_EMAIL,headers);
   await d.prepare("INSERT INTO mailbox(direction,sender,recipient,subject,body_text,status,external_id) VALUES('outbound',?,?,?,?,'sent',?)").bind(e.MAILBOX_FROM_EMAIL,to,subject,body,result.id||'').run();return json({ok:true});
  }
  if(method==='PATCH'&&/^\/api\/admin\/mailbox\/\d+$/.test(path)){
@@ -167,6 +220,13 @@ export default {
  async fetch(r,e){
   const url=new URL(r.url),path=url.pathname;
   try{
+   if(path==='/api/webhooks/resend'&&r.method==='POST'){
+    if(Number(r.headers.get('content-length')||0)>65536)return fail('Payload too large',413);
+    const bytes=await limitedBody(r.body,65536);const verified=await verifyResendWebhook(new Request(r.url,{method:'POST',headers:r.headers,body:bytes}),e);
+    if(verified.error)return fail(verified.error,verified.status);
+    if(verified.event?.type==='email.received')await importResendEmail(e,verified.event.data?.email_id);
+    return json({ok:true});
+   }
    const destination=legacyRedirects[path.replace(/\/+$/,'')];
    if(destination&&['GET','HEAD'].includes(r.method))return Response.redirect(new URL(destination,url),301);
    if(path==='/unsubscribe'){
@@ -199,15 +259,27 @@ export default {
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
     return await publicAPI(r,e,path);
    }
+   if(path.startsWith('/media/')){
+    if(!['GET','HEAD'].includes(r.method))return fail('Method not allowed',405);
+    if(!mediaPath.test(path))return fail('Not found',404);
+    const object=await e.PRODUCT_IMAGES?.get(path.slice(7));if(!object)return fail('Image not found',404);
+    const headers=new Headers({'x-content-type-options':'nosniff','cache-control':'public, max-age=31536000, immutable','content-security-policy':"default-src 'none'"});object.writeHttpMetadata(headers);headers.set('etag',object.httpEtag);
+    if(r.headers.get('if-none-match')===object.httpEtag)return new Response(null,{status:304,headers});
+    return new Response(r.method==='HEAD'?null:object.body,{headers});
+   }
    return e.ASSETS.fetch(r);
-  }catch(err){console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}
+  }catch(err){if(err.message!=='Payload too large')console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}
  },
  async email(message,e){
   if(!e.DB)throw Error('D1 not configured');
-  const to=clean(message.to,254).toLowerCase();if(!to.endsWith('@'+String(e.INBOUND_DOMAIN||'').toLowerCase())){message.setReject('Recipient domain not allowed');return}
-  const raw=await new Response(message.raw).text(),head=raw.split(/\r?\n\r?\n/,1)[0];
-  const subject=clean(head.match(/^subject:\s*(.*)$/im)?.[1]||'(no subject)',240);
-  const body=clean(raw.slice(head.length).replace(/^\s+/,'').replace(/<[^>]*>/g,' '),12000);
+  const to=clean(message.to,254).toLowerCase(),address=(e.INBOUND_ADDRESS||'info@'+e.INBOUND_DOMAIN).toLowerCase();if(to!==address){message.setReject('Recipient not allowed');return}
+  if(message.rawSize>10*1024*1024){message.setReject('Message exceeds 10 MB');return;}
+  let bytes;try{bytes=await limitedBody(message.raw,10*1024*1024);}catch{message.setReject('Message exceeds 10 MB');return;}
+  const parsed=await PostalMime.parse(bytes);
+  const subject=clean(parsed.subject||'(no subject)',240);
+  let body=parsed.text||String(parsed.html||'').replace(/<style\b[^>]*>[\s\S]*?<\/style>|<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<br\s*\/?>|<\/p>|<\/div>/gi,'\n').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+  if(parsed.attachments?.length)body+='\n\nAttachments: '+parsed.attachments.map(a=>a.filename||'Unnamed attachment').join(', ')+'\n(Attachments are not stored in this inbox.)';
+  body=clean(body,50000);
   await e.DB.prepare("INSERT INTO mailbox(direction,sender,recipient,subject,body_text,external_id) VALUES('inbound',?,?,?,?,?)").bind(clean(message.from,254),to,subject,body,clean(message.headers.get('message-id'),255)).run();
  }
 };

@@ -11,3 +11,5 @@
 .pw-admin-bottom{margin:28px 0 8px;text-align:center;color:#a8aba0}
 .pw-store-credit{padding:6px 0}
 @media(max-width:640px){.pw-admin-credit{margin-top:7px;padding-top:7px}.pw-admin-bottom{margin:16px 0}.pw-icon-action{gap:4px}.pw-icon-action .material-symbols-outlined{font-size:18px}}
+
+.side .nav .pw-icon-action,.menu-mobile .pw-nav-link{justify-content:flex-start!important;text-align:left}

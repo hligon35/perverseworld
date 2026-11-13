@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = n => '$' + Number(n).toFixed(2);
-  const image = value => /^https:\/\//.test(value || '') || /^\/assets\/images\/[\w.-]+$/.test(value || '') ? value : '';
+  const image = value => /^https:\/\//.test(value || '') || /^\/assets\/images\/[\w.-]+$/.test(value || '') || /^\/media\/products\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/.test(value || '') ? value : '';
   const builtins = window.PW_CATALOG || [];
   const retired = window.PW_CATALOG_CONFIG?.retiredProductIds || [];
   let products = [...builtins], cart = [], current = null, size = 'S';
@@ -32,7 +32,7 @@
         const optionId=item.optionId||(original?.options?'hoodie':'');
         const known=original?saleItem(original,optionId):null;
         const p = known?{...item,...known}:item.name?item:null;
-        return p && Number.isInteger(Number(p.id)) && Number.isFinite(Number(p.price)) && Number(p.price) >= 0 && ['S','M','L','XL','2XL'].includes(item.size)
+        return p && Number.isInteger(Number(p.id)) && Number.isFinite(Number(p.price)) && Number(p.price) >= 0 && typeof item.size==='string' && /^[A-Za-z0-9 -]{1,16}$/.test(item.size)
           ? [{id:Number(p.id),...(optionId?{optionId}:{}),name:known?.optionId?known.name:String(p.name).slice(0,150),price:Number(p.price),img:known&&String(p.img||'').startsWith('/assets/images/')?known.img:image(p.img),size:item.size}] : [];
       });
     } catch { cart = []; }
@@ -68,7 +68,9 @@
     }
     showView(0);
     $('modalName').textContent = current.name; $('modalPrice').textContent = money(current.price);
-    $('sizes').querySelectorAll('button').forEach(b => b.classList.toggle('selected',b.dataset.size === size));
+    const sizes=current.sizes||{S:10,M:10,L:10,XL:10,'2XL':10};size=Object.keys(sizes).find(key=>sizes[key]>0)||'';
+    $('sizes').replaceChildren(...Object.entries(sizes).map(([key,quantity])=>{const button=document.createElement('button');button.type='button';button.textContent=key;button.dataset.size=key;button.disabled=quantity===0;button.classList.toggle('selected',key===size);button.onclick=()=>{size=key;$('sizes').querySelectorAll('button').forEach(node=>node.classList.toggle('selected',node===button))};return button}));
+    $('modalAdd').disabled=!size;
     $('modal').classList.add('open'); $('overlay').classList.add('open');
   }
   const closeProduct = () => { $('modal').classList.remove('open'); closeOverlay(); };
@@ -82,7 +84,8 @@
   if ($('sort')) $('sort').onchange = renderProducts;
   $('sizes').querySelectorAll('button').forEach(b => b.onclick = () => {size=b.dataset.size;$('sizes').querySelectorAll('button').forEach(x=>x.classList.toggle('selected',x===b));});
   function addItem(product,selectedSize){
-    if(!product)return false;
+    if(!product||!selectedSize)return false;
+    if(product.sizes){const quantity=product.sizes[selectedSize]||0,already=cart.filter(item=>item.id===product.id&&(item.optionId||'')===(product.optionId||'')&&item.size===selectedSize).length;if(already>=quantity){toast('THIS SIZE IS SOLD OUT');return false;}}
     if(cart.length>=40){toast('YOUR BAG IS FULL');return false;}
     cart.push({id:product.id,...(product.optionId?{optionId:product.optionId}:{}),name:product.name,price:product.price,img:image(product.img),size:selectedSize});
     persist();renderCart();toast('ADDED TO YOUR BAG +');return true;

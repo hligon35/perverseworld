@@ -83,7 +83,7 @@ The bag's **Ask about your bag** action opens Contact with an order enquiry and 
 
 Official repository: **hligon35/perverseworld** (no dash).
 
-The public catalog contains Worldscape Tee ($28), Perverse Puppeteer Tee ($28), Midnight Terror Hoodie ($65), and World Logo Set (from $45). The set's product page offers World Logo Hoodie ($65) and World Logo Sweatpants ($45) as individually priced pieces. It keeps separate selections and sizes in the bag. Home features only the hoodie, linking to `/shop/world-logo-set?item=hoodie`. Product pages use the supplied front, back and modeled images without cropping the garments. The retained transparent logo is referenced by its new filename, `perverse-world-logo2.png`.
+The public catalog contains Worldscape Tee ($28), Perverse Puppeteer Tee ($28), Midnight Terror Hoodie ($65), and World Logo Set (from $45). The set's product page offers World Logo Hoodie ($65) and World Logo Sweatpants ($45) as individually priced pieces. It keeps separate selections and sizes in the bag. Home features only the hoodie, linking to `/shop/world-logo-set?item=hoodie`. Product pages use the supplied front, back and modeled images without cropping the garments. The retained transparent logo is referenced by its new filename, `perverse-world-logo.png`.
 
 Otherworld Graphic Tee (ID 1) and Possessed Hand Graphic (ID 6) remain retired. Migration `0002_retire_non_products.sql` archives them without deleting history. Migration `0003_update_product_catalog.sql` updates names, prices and categories, and adds stored item pricing for the World Logo set. Apply pending production migrations using the existing verified migration workflow before saving product edits through the updated admin. The public API upgrades untouched seeded records and resolves built-in imagery from the current source catalog, so obsolete image URLs and original seed pricing do not return before migration. Existing administrator edits are preserved. The admin provides separate hoodie and sweatpants price fields; the listing's starting price is calculated from those prices.
 
@@ -103,3 +103,19 @@ Turnstile is integrated into **newsletter subscriptions** and **contact submissi
 5. Deploy with `npm run deploy` and verify newsletter signup and contact submissions on the live domain. Avoid using real mailing-list addresses for test submissions.
 
 **Security:** Do not place `TURNSTILE_SECRET` in `wrangler.toml`, `.env.example`, frontend code, or GitHub. The domain and secret must be configured in the actual Cloudflare account before the forms can accept submissions.
+
+
+### Admin images, stock and inbox
+
+The admin uses shared navigation, a mobile drawer and Cloudflare Access logout. Its assets and APIs still require a verified, allowlisted Access identity. Product photos upload to the existing R2 bucket `perverse-world` through the `PRODUCT_IMAGES` binding. JPEG, PNG and WebP uploads are limited to 5 MB each, checked by file signature and served at immutable public `/media/products/{uuid}.{ext}` URLs. R2 public bucket access is not required. The first photo in each gallery is its cover; move buttons arrange the order. The World Logo listing, hoodie and sweatpants have separate galleries. Stock uses size/quantity rows, including separate item stock, and sold-out sizes are disabled in the storefront. Apply migration `0004_admin_media.sql` before releasing this code.
+
+The domain currently receives through Resend (`receive.forge.rmta.net`); preserve its MX records. To activate the inbox:
+
+1. Add a full-access `RESEND_API_KEY` to the `perverse-world` Worker's secrets. A send-only key cannot read received messages. Confirm the domain is verified for sending, including `info@perverseworld.com` and `updates@perverseworld.com`.
+2. In Resend, add webhook `https://perverseworld.com/api/webhooks/resend`, subscribed to `email.received`. Store its signing secret as Worker secret `RESEND_WEBHOOK_SECRET`.
+3. The webhook must be publicly reachable without a Cloudflare Access sign-in challenge. Authentication is its HMAC signature, checked against the exact raw body and a five-minute timestamp window. Keep `/admin/*` and `/api/admin/*` protected. Public `/api/products`, `/api/config`, contact/newsletter form endpoints and product media must also remain public.
+4. Incoming events retrieve the full email from Resend and import only messages addressed to `info@perverseworld.com`. A unique provider ID prevents duplicate messages on retries. Use **Sync recent mail** to import the latest received messages; **Sync older mail** pages backward. Inbox, unread, sent and archive folders include search and pagination. Opening a message marks it read. Replies send from `info@perverseworld.com` and retain message references for threading. Bodies display as safe plain text; attachment names are shown, but attachment files are not stored.
+
+Cloudflare's email handler also supports the exact info address with MIME decoding if receiving is deliberately moved there later. Do not enable Cloudflare Email Routing over the current Resend MX records.
+
+Campaign previews and delivery share `public/assets/js/newsletter-template.js`. Every email includes the logo, dark/orange styling, campaign preheader, shop link, contact link and a recipient-specific unsubscribe link. Previewing or saving a draft sends no email. Campaign sending remains an explicit admin action to opted-in subscribers.

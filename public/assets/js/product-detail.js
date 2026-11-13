@@ -16,16 +16,21 @@
  }
  function render(){
   const parent=window.PWStore.getProduct(detail.dataset.productId);
-  if(!parent){$('detailAdd').disabled=true;$('detailStatus').textContent='This piece is currently unavailable.';return;}
+  if(!parent){$('detailAdd').disabled=true;$('detailSizes').replaceChildren();$('detailStatus').textContent='This piece is currently unavailable.';return;}
   if(parent.options?.length&&!parent.options.some(option=>option.id===selected))selected=parent.options[0].id;
   current=window.PWStore.saleItem(parent,selected);
   $('detailAdd').disabled=false;$('detailName').textContent=parent.name;
+  detail.querySelector('.detail-info > p').textContent=parent.sub||'';
   $('detailPrice').textContent=money(current.price);$('detailSelectedName').textContent=current.name;
   document.querySelectorAll('#detailOptions button').forEach(button=>{
    const option=parent.options?.find(item=>item.id===button.dataset.option);if(!option)return;
    button.setAttribute('aria-pressed',String(button.dataset.option===selected));
    button.querySelector('strong').textContent=money(option.price);
   });
+  const sizes=current.sizes||{S:10,M:10,L:10,XL:10,'2XL':10};
+  if(!size||!(sizes[size]>0))size=Object.keys(sizes).find(key=>sizes[key]>0)||'';
+  $('detailSizes').replaceChildren(...Object.entries(sizes).map(([key,quantity])=>{const button=document.createElement('button');button.type='button';button.dataset.size=key;button.textContent=key;button.disabled=quantity===0;button.classList.toggle('selected',key===size);button.onclick=()=>{size=key;$('detailSizes').querySelectorAll('button').forEach(node=>node.classList.toggle('selected',node===button))};return button}));
+  $('detailAdd').disabled=!size;
   gallery(current);
  }
  document.querySelectorAll('#detailOptions button').forEach(button=>button.onclick=()=>{
