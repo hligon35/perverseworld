@@ -19,6 +19,7 @@ if(output.href!==root.href+'dist/')throw Error('Unexpected output directory');
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 await cp(new URL('public/',root),new URL('dist/',root),{recursive:true});
+await write('dist/admin/index.html',(await read('public/admin/index.html')).replace('<!-- admin-analytics -->',await read('src/site/components/admin-analytics.html')));
 await write('dist/assets/js/catalog.js',`// Generated from src/site/products.json and catalog-policy.js.\nwindow.PW_CATALOG = ${JSON.stringify(products)};\nwindow.PW_CATALOG_CONFIG = ${JSON.stringify({retiredProductIds,homeProductId,homeOptionId})};\n`);
 
 const navigationHTML=route=>{

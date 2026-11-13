@@ -88,7 +88,7 @@
     if(product.sizes){const quantity=product.sizes[selectedSize]||0,already=cart.filter(item=>item.id===product.id&&(item.optionId||'')===(product.optionId||'')&&item.size===selectedSize).length;if(already>=quantity){toast('THIS SIZE IS SOLD OUT');return false;}}
     if(cart.length>=40){toast('YOUR BAG IS FULL');return false;}
     cart.push({id:product.id,...(product.optionId?{optionId:product.optionId}:{}),name:product.name,price:product.price,img:image(product.img),size:selectedSize});
-    persist();renderCart();toast('ADDED TO YOUR BAG +');return true;
+    persist();renderCart();toast('ADDED TO YOUR BAG +');document.dispatchEvent(new CustomEvent('pw:bag-added',{detail:{productId:product.id}}));return true;
   }
   $('modalAdd').onclick=()=>{if(addItem(current,size))closeProduct();};
   $('cartBtn').onclick = () => {renderCart();$('drawer').classList.add('open');$('overlay').classList.add('open');};

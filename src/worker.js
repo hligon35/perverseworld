@@ -4,6 +4,7 @@ import catalog from './site/products.json' with {type:'json'};
 import PostalMime from 'postal-mime';
 import {newsletterTemplate} from '../public/assets/js/newsletter-template.js';
 import {verifyResendWebhook,importResendEmail,resendGet} from './mail.js';
+import {analyticsPeriod,adminAnalytics,recordAnalytics} from './analytics.js';
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -124,6 +125,10 @@ async function publicAPI(r,e,path){
 async function adminAPI(r,e,path,identity){
  const d=db(e),method=r.method;
  if(method==='GET'&&path==='/api/admin/session')return json({email:identity});
+ if(method==='GET'&&path==='/api/admin/analytics'){
+  let period;try{period=analyticsPeriod(new URL(r.url).searchParams.get('days')||'30');}catch(error){return fail(error.message);}
+  return json(await adminAnalytics(d,period,product));
+ }
  if(method==='POST'&&path==='/api/admin/mailbox/sync'){
   if(!e.RESEND_API_KEY)return fail('Add RESEND_API_KEY as a Worker secret to connect Resend mail.',503);
   const body=await parse(r),after=clean(body.after,40);if(after&&!/^[a-f0-9-]{36}$/i.test(after))return fail('Invalid mail cursor');
@@ -220,6 +225,7 @@ export default {
  async fetch(r,e){
   const url=new URL(r.url),path=url.pathname;
   try{
+   if(path==='/api/analytics'&&r.method==='POST')return await recordAnalytics(r,e);
    if(path==='/api/webhooks/resend'&&r.method==='POST'){
     if(Number(r.headers.get('content-length')||0)>65536)return fail('Payload too large',413);
     const bytes=await limitedBody(r.body,65536);const verified=await verifyResendWebhook(new Request(r.url,{method:'POST',headers:r.headers,body:bytes}),e);
