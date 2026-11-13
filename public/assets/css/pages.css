@@ -19,3 +19,5 @@ body[data-site-page=home] .pw-home-intro p{color:#9da295;max-width:520px}
 @media(max-width:800px){.pw-route-hero{padding:66px 24px}.pw-route-hero h1{letter-spacing:-1px}}
 
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+/* Mobile touch targets: 44px minimum for storefront controls */
+@media(max-width:760px){.filter,.size-buttons button,.add,.close,.modal-close,.cart-item button,.nav-actions button{min-height:44px;min-width:44px}.toast{bottom:calc(23px + env(safe-area-inset-bottom))}input,select{font-size:16px}}
