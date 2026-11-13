@@ -1,1 +1,34 @@
-{"expo":{"name":"Perverse World","slug":"perverse-world","scheme":"perverseworld","version":"1.0.0","orientation":"portrait","userInterfaceStyle":"dark","backgroundColor":"#111210","ios":{"supportsTablet":true,"bundleIdentifier":"com.alphazonelabs.perverseworld"},"android":{"package":"com.alphazonelabs.perverseworld"},"extra":{"siteUrl":"https://perverseworld.com"},"plugins":[]}}
+{
+  "expo": {
+    "name": "Perverse World",
+    "slug": "perverse-world",
+    "scheme": "perverseworld",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#111210",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alphazonelabs.perverseworld"
+    },
+    "android": {
+      "package": "com.alphazonelabs.perverseworld",
+      "adaptiveIcon": {
+        "foregroundImage": "../../public/assets/images/perverseIcon.png",
+        "backgroundColor": "#111210"
+      }
+    },
+    "extra": {
+      "siteUrl": "https://perverseworld.com"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
+    "icon": "../../public/assets/images/perverseIcon.png",
+    "web": {
+      "favicon": "../../public/assets/images/perverseIcon.png"
+    }
+  }
+}

@@ -17,3 +17,5 @@ body[data-site-page=home] .pw-home-intro p{color:#9da295;max-width:520px}
 .pw-page-button{display:inline-flex;align-items:center;gap:8px;text-decoration:none;background:#ec512f;color:#161612;padding:14px 22px;font:900 15px var(--cond,Impact),sans-serif;letter-spacing:1.5px;margin:22px 0}
 .pw-page-button:hover{background:#fd6942}
 @media(max-width:800px){.pw-route-hero{padding:66px 24px}.pw-route-hero h1{letter-spacing:-1px}}
+
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}

@@ -1,3 +1,5 @@
+import {readLimited as limitedBody} from './http.js';
+import {storefrontResponse} from './storefront-response.js';
 import {legacyRedirects} from './site/routes.js';
 import {retiredProductIds} from './site/catalog-policy.js';
 import catalog from './site/products.json' with {type:'json'};
@@ -5,21 +7,16 @@ import PostalMime from 'postal-mime';
 import {newsletterTemplate} from '../public/assets/js/newsletter-template.js';
 import {verifyResendWebhook,importResendEmail,resendGet} from './mail.js';
 import {analyticsPeriod,adminAnalytics,recordAnalytics} from './analytics.js';
+import {deliverEmail,drainOutbox,brandedMessage} from './email.js';
+import {subscribeCustomer,subscriberLink,saveContact} from './customer-messages.js';
 const json=(v,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail=(m,s=400)=>json({error:m},s),clean=(v,n=200)=>String(v??'').trim().slice(0,n),emailOK=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const escapeHTML=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const parse=async r=>{const t=await r.text();if(t.length>65536)throw Error('Payload too large');return JSON.parse(t||'{}')};
-const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
+const parse=async r=>JSON.parse(new TextDecoder().decode(await limitedBody(r.body,65536))||'{}');
 const db=e=>{if(!e.DB)throw Error('D1 is not bound');return e.DB};
-const sameOrigin=(r,e)=>!r.headers.get('origin')||r.headers.get('origin')===new URL(e.PUBLIC_BASE_URL).origin;
+const sameOrigin=(r,e)=>{const origin=r.headers.get('origin');if(!origin)return true;const base=new URL(e.PUBLIC_BASE_URL);return origin===base.origin||(base.hostname==='perverseworld.com'&&origin==='https://www.perverseworld.com'&&new URL(r.url).origin===origin);};
 const mediaPath=/^\/media\/products\/[a-f0-9-]{36}\.(?:jpg|png|webp)$/;
 const imageOK=value=>mediaPath.test(value)||/^\/assets\/images\/[\w.-]+$/.test(value)||/^https:\/\/[^\s<>"']+$/.test(value);
-async function limitedBody(stream,limit){
- const reader=stream?.getReader();if(!reader)return new Uint8Array();
- const parts=[];let length=0;
- try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>limit){await reader.cancel();throw Error('Payload too large');}parts.push(value);}}finally{reader.releaseLock();}
- const bytes=new Uint8Array(length);let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}return bytes;
-}
 const b64=s=>atob(s.replace(/-/g,'+').replace(/_/g,'/'));
 let keys={url:'',until:0,jwks:null};
 async function verifyAccess(r,e){
@@ -93,11 +90,9 @@ function productInput(b){
  return {...x,sizes_json:JSON.stringify(x.sizes),options_json:JSON.stringify(prices.map(p=>({...p,...(optionSizes[p.id]?{sizes:optionSizes[p.id]}:{})}))),images_json:images===undefined?null:JSON.stringify(images.map(v=>({src:v.src,label:clean(v.label,60),...(v.optionId?{optionId:v.optionId}:{})})))};
 }
 async function sendEmail(e,to,subject,html,text,from,headers){
- if(!e.RESEND_API_KEY)throw Error('Email provider not configured');
- const res=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+e.RESEND_API_KEY,'content-type':'application/json'},body:JSON.stringify({from:from||e.FROM_EMAIL,to:[to],subject,html,text,...(headers?{headers}:{})})});
- if(!res.ok)throw Error('Email provider rejected request ('+res.status+')');return res.json();
+ return deliverEmail(e,{from:from||e.FROM_EMAIL,to:[to],subject,html,text,...(headers?{headers}:{})});
 }
-async function publicAPI(r,e,path){
+async function publicAPI(r,e,path,ctx){
  if(r.method==='GET'&&path==='/api/config')return json({turnstileSiteKey:e.TURNSTILE_SITE_KEY||''});
  const d=db(e);
  if(r.method==='GET'&&path==='/api/products')return json({products:(await d.prepare('SELECT * FROM products WHERE active=1 ORDER BY id DESC').all()).results.filter(row=>!retiredProductIds.includes(Number(row.id))).map(product)});
@@ -107,18 +102,16 @@ async function publicAPI(r,e,path){
   const verification=await captcha(r,e,b.turnstileToken,'newsletter');
   if(verification.misconfigured)return fail('Form verification is not configured',503);
   if(!verification.ok)return fail('Turnstile verification failed. Please try again.',403);
-  await d.prepare("INSERT INTO subscribers(email,unsub_token,status) VALUES(?,?,'active') ON CONFLICT(email) DO UPDATE SET status='active',consent_at=CURRENT_TIMESTAMP").bind(email,token()).run();
-  return json({ok:true});
+  return subscribeCustomer(e,email,ctx);
  }
  if(r.method==='POST'&&path==='/api/submissions'){
   const b=await parse(r);if(b.website)return json({ok:true});
-  const name=clean(b.name,120),email=clean(b.email,254).toLowerCase(),subject=clean(b.subject,160),message=clean(b.message,4000);
+  const name=clean(b.name,120),email=clean(b.email,254).toLowerCase(),subject=clean(b.subject,160).replace(/[\r\n]+/g,' '),message=clean(b.message,4000);
   if(!name||!emailOK(email)||!subject||!message)return fail('Fill in all required fields');
   const verification=await captcha(r,e,b.turnstileToken,'contact');
   if(verification.misconfigured)return fail('Form verification is not configured',503);
   if(!verification.ok)return fail('Turnstile verification failed. Please try again.',403);
-  await d.prepare('INSERT INTO submissions(name,email,subject,message) VALUES(?,?,?,?)').bind(name,email,subject,message).run();
-  return json({ok:true});
+  return saveContact(e,{name,email,subject,message,requestId:b.requestId},ctx);
  }
  return fail('Not found',404);
 }
@@ -169,7 +162,29 @@ async function adminAPI(r,e,path,identity){
   const b=await parse(r),status=clean(b.status,20);if(!['new','reviewed','closed'].includes(status))return fail('Invalid status');
   await d.prepare('UPDATE submissions SET status=? WHERE id=?').bind(status,Number(path.split('/').pop())).run();return json({ok:true});
  }
- if(method==='GET'&&path==='/api/admin/subscribers')return json({items:(await d.prepare('SELECT id,email,status,consent_at,created_at FROM subscribers ORDER BY id DESC LIMIT 500').all()).results});
+ if(method==='GET'&&path==='/api/admin/subscribers'){
+  const url=new URL(r.url),status=url.searchParams.get('status')||'all',q=clean(url.searchParams.get('q'),100),page=Math.max(0,parseInt(url.searchParams.get('page')||'0',10)||0);
+  if(!['all','pending','active','unsubscribed'].includes(status)||page>100000)return fail('Invalid audience filter');
+  const where=[...(status==='all'?[]:['s.status=?']),...(q?["s.email LIKE ? ESCAPE '\\'"]:[])],args=[...(status==='all'?[]:[status]),...(q?['%'+q.replace(/[\\%_]/g,'\\$&')+'%']:[])],filter=where.length?' WHERE '+where.join(' AND '):'';
+  const total=(await d.prepare('SELECT COUNT(*) AS count FROM subscribers s'+filter).bind(...args).first()).count;
+  const items=(await d.prepare("SELECT s.id,s.email,s.status,s.consent_at,s.confirmed_at,s.created_at,CASE WHEN EXISTS(SELECT 1 FROM email_outbox o WHERE o.subscriber_id=s.id AND o.optin_version=s.optin_version AND o.status='failed') THEN 'failed' WHEN EXISTS(SELECT 1 FROM email_outbox o WHERE o.subscriber_id=s.id AND o.optin_version=s.optin_version AND o.status IN ('queued','sending')) THEN 'queued' WHEN EXISTS(SELECT 1 FROM email_outbox o WHERE o.subscriber_id=s.id AND o.optin_version=s.optin_version AND o.status='sent') THEN 'sent' ELSE '—' END AS email_status FROM subscribers s"+filter+' ORDER BY s.id DESC LIMIT 50 OFFSET ?').bind(...args,page*50).all()).results;
+  return json({items,total,page});
+ }
+ if(method==='PATCH'&&/^\/api\/admin\/subscribers\/\d+$/.test(path)){
+  const b=await parse(r);if(b.status!=='unsubscribed')return fail('Subscribers must confirm their own email before activation');
+  const id=Number(path.split('/').pop());const result=await d.batch([d.prepare("UPDATE subscribers SET status='unsubscribed',confirm_token_hash='' WHERE id=?").bind(id),d.prepare("INSERT OR IGNORE INTO subscriber_events(subscriber_id,event,optin_version) SELECT id,'unsubscribed',optin_version FROM subscribers WHERE id=?").bind(id)]);return result[0].meta.changes?json({ok:true}):fail('Subscriber not found',404);
+ }
+ if(method==='POST'&&/^\/api\/admin\/subscribers\/\d+\/confirmation$/.test(path)){
+  const row=await d.prepare('SELECT email,status FROM subscribers WHERE id=?').bind(Number(path.split('/')[4])).first();if(!row||row.status!=='pending')return fail('Only pending subscribers can receive a new confirmation link');
+  return subscribeCustomer(e,row.email,null,{force:true});
+ }
+ if(method==='GET'&&path==='/api/admin/email/outbox'){
+  return json({configured:!!(e.RESEND_API_KEY&&e.FROM_EMAIL),counts:(await d.prepare('SELECT status,COUNT(*) AS count FROM email_outbox GROUP BY status').all()).results,items:(await d.prepare('SELECT id,kind,recipient,status,attempts,last_error,created_at,sent_at FROM email_outbox ORDER BY created_at DESC LIMIT 30').all()).results});
+ }
+ if(method==='POST'&&path==='/api/admin/email/retry'){
+  await d.prepare("UPDATE email_outbox SET status='queued',attempts=0,next_attempt_at=CURRENT_TIMESTAMP WHERE status='failed' AND (first_attempt_at IS NULL OR first_attempt_at>datetime('now','-23 hours'))").run();
+  return json(await drainOutbox(e,10));
+ }
  if(method==='GET'&&path==='/api/admin/newsletters')return json({items:(await d.prepare('SELECT * FROM newsletters ORDER BY id DESC LIMIT 150').all()).results});
  if(method==='POST'&&path==='/api/admin/newsletters'){
   const b=await parse(r),subject=clean(b.subject,180),preheader=clean(b.preheader,240),html=clean(b.body_html,30000);
@@ -181,10 +196,11 @@ async function adminAPI(r,e,path,identity){
   const id=Number(path.split('/')[4]),letter=await d.prepare('SELECT * FROM newsletters WHERE id=?').bind(id).first();if(!letter)return fail('Newsletter not found',404);
   const batch=await d.prepare("SELECT id,email,unsub_token FROM subscribers WHERE status='active' AND id NOT IN (SELECT subscriber_id FROM newsletter_deliveries WHERE newsletter_id=?) ORDER BY id LIMIT 20").bind(id).all();let sent=0,failed=0;
   for(const person of batch.results){try{
+    const current=await d.prepare('SELECT status FROM subscribers WHERE id=?').bind(person.id).first();if(current?.status!=='active')continue;
     const link=e.PUBLIC_BASE_URL+'/unsubscribe?token='+encodeURIComponent(person.unsub_token);
     const html=newsletterTemplate({...letter,baseURL:e.PUBLIC_BASE_URL,unsubscribeURL:link});
     const text=[letter.preheader,letter.body_html.replace(/<[^>]*>/g,' '),'Shop: '+e.PUBLIC_BASE_URL+'/shop','Unsubscribe: '+link].filter(Boolean).join('\n\n');
-    const result=await sendEmail(e,person.email,letter.subject,html,text);
+    const result=await deliverEmail(e,{to:[person.email],subject:letter.subject,html,text,reply_to:e.MAILBOX_FROM_EMAIL||e.FROM_EMAIL,headers:{'List-Unsubscribe':'<'+link+'>','List-Unsubscribe-Post':'List-Unsubscribe=One-Click'}},'pw-campaign/'+id+'/'+person.id);
     await d.prepare('INSERT OR IGNORE INTO newsletter_deliveries(newsletter_id,subscriber_id,provider_id) VALUES(?,?,?)').bind(id,person.id,result.id||'').run();sent++;
    }catch{failed++}}
   await d.prepare("UPDATE newsletters SET status='sending',sent_count=(SELECT COUNT(*) FROM newsletter_deliveries WHERE newsletter_id=?),updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id,id).run();
@@ -212,7 +228,8 @@ async function adminAPI(r,e,path,identity){
   if(!e.RESEND_API_KEY||!e.MAILBOX_FROM_EMAIL)return fail('Outbound mailbox not configured',503);
   const parent=b.reply_to_id?await d.prepare("SELECT external_id FROM mailbox WHERE id=? AND direction='inbound'").bind(Number(b.reply_to_id)).first():null;
   const messageId=parent?.external_id;const headers=messageId&&/^<[^\s<>]+>$/.test(messageId)?{'In-Reply-To':messageId,References:messageId}:undefined;
-  const result=await sendEmail(e,to,subject,'<p style="white-space:pre-wrap">'+escapeHTML(body)+'</p>',body,e.MAILBOX_FROM_EMAIL,headers);
+  const html=brandedMessage({title:subject,content:'<p style="white-space:pre-wrap">'+escapeHTML(body)+'</p>',baseURL:e.PUBLIC_BASE_URL});
+  const result=await sendEmail(e,to,subject,html,body,e.MAILBOX_FROM_EMAIL,headers);
   await d.prepare("INSERT INTO mailbox(direction,sender,recipient,subject,body_text,status,external_id) VALUES('outbound',?,?,?,?,'sent',?)").bind(e.MAILBOX_FROM_EMAIL,to,subject,body,result.id||'').run();return json({ok:true});
  }
  if(method==='PATCH'&&/^\/api\/admin\/mailbox\/\d+$/.test(path)){
@@ -222,7 +239,7 @@ async function adminAPI(r,e,path,identity){
  return fail('Not found',404);
 }
 export default {
- async fetch(r,e){
+ async fetch(r,e,ctx){
   const url=new URL(r.url),path=url.pathname;
   try{
    if(path==='/api/analytics'&&r.method==='POST')return await recordAnalytics(r,e);
@@ -235,11 +252,7 @@ export default {
    }
    const destination=legacyRedirects[path.replace(/\/+$/,'')];
    if(destination&&['GET','HEAD'].includes(r.method))return Response.redirect(new URL(destination,url),301);
-   if(path==='/unsubscribe'){
-    const t=clean(url.searchParams.get('token'),100);if(!/^[a-f0-9]{48}$/.test(t))return new Response('Invalid unsubscribe link',{status:400});
-    await db(e).prepare("UPDATE subscribers SET status='unsubscribed' WHERE unsub_token=?").bind(t).run();
-    return new Response('You have been unsubscribed from Perverse World updates.',{headers:{'content-type':'text/plain; charset=utf-8'}});
-   }
+   if(path==='/unsubscribe'||path==='/newsletter/confirm')return subscriberLink(r,e,ctx,path==='/unsubscribe');
    if(path==='/admin'||path.startsWith('/admin/')||path.startsWith('/api/admin/')){
     // The Access application protects the apex /admin/ path. Send browser visits
     // there before requiring its assertion; never serve protected content here.
@@ -263,7 +276,7 @@ export default {
    }
    if(path.startsWith('/api/')){
     if(r.method!=='GET'&&!sameOrigin(r,e))return fail('Invalid origin',403);
-    return await publicAPI(r,e,path);
+    return await publicAPI(r,e,path,ctx);
    }
    if(path.startsWith('/media/')){
     if(!['GET','HEAD'].includes(r.method))return fail('Method not allowed',405);
@@ -273,9 +286,10 @@ export default {
     if(r.headers.get('if-none-match')===object.httpEtag)return new Response(null,{status:304,headers});
     return new Response(r.method==='HEAD'?null:object.body,{headers});
    }
-   return e.ASSETS.fetch(r);
-  }catch(err){if(err.message!=='Payload too large')console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err.message==='Payload too large'?413:500)}
+   return storefrontResponse(r,e,product);
+  }catch(err){if(err.message!=='Payload too large')console.error('Request failed',err);return fail(err instanceof SyntaxError?'Invalid JSON':err.message==='Payload too large'?'Payload too large':'Request failed',err instanceof SyntaxError?400:err.message==='Payload too large'?413:500)}
  },
+ async scheduled(_controller,e,ctx){const work=drainOutbox(e,20);if(ctx?.waitUntil)ctx.waitUntil(work);else await work;},
  async email(message,e){
   if(!e.DB)throw Error('D1 not configured');
   const to=clean(message.to,254).toLowerCase(),address=(e.INBOUND_ADDRESS||'info@'+e.INBOUND_DOMAIN).toLowerCase();if(to!==address){message.setReject('Recipient not allowed');return}
@@ -286,6 +300,7 @@ export default {
   let body=parsed.text||String(parsed.html||'').replace(/<style\b[^>]*>[\s\S]*?<\/style>|<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<br\s*\/?>|<\/p>|<\/div>/gi,'\n').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
   if(parsed.attachments?.length)body+='\n\nAttachments: '+parsed.attachments.map(a=>a.filename||'Unnamed attachment').join(', ')+'\n(Attachments are not stored in this inbox.)';
   body=clean(body,50000);
-  await e.DB.prepare("INSERT INTO mailbox(direction,sender,recipient,subject,body_text,external_id) VALUES('inbound',?,?,?,?,?)").bind(clean(message.from,254),to,subject,body,clean(message.headers.get('message-id'),255)).run();
+  const replyTo=clean(parsed.replyTo?.[0]?.address,254);
+  await e.DB.prepare("INSERT INTO mailbox(direction,sender,recipient,subject,body_text,external_id,reply_to) VALUES('inbound',?,?,?,?,?,?)").bind(clean(message.from,254),to,subject,body,clean(message.headers.get('message-id'),255),emailOK(replyTo)?replyTo:'').run();
  }
 };

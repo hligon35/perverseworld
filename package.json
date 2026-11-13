@@ -11,7 +11,7 @@
     "deploy": "npm run deploy:verify && npm run build && wrangler deploy",
     "deploy:verify": "node scripts/verify-deploy.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "check": "node scripts/build.mjs && node --check src/worker.js && node --check src/analytics.js && node --check public/assets/js/launch.js && node --check public/assets/js/storefront.js && node --check public/assets/js/product-detail.js && node --check public/assets/js/forms.js && node --check public/brand-ui.js && node --check public/admin/admin.js && node --check public/admin/product-editor.js && node --check public/admin/mailbox.js && node --check public/admin/ui.js && node --check public/admin/drawer.js && node --check public/admin/analytics.js && node --check public/assets/js/analytics.js && node --check public/assets/js/newsletter-template.js && node --test tests/*.test.mjs",
+    "check": "node scripts/build.mjs && node --check src/worker.js && node --check src/analytics.js && node --check src/email.js && node --check src/http.js && node --check src/customer-messages.js && node --check src/storefront-response.js && node --check src/site/seo.js && node --check src/service-worker.js && node --check public/assets/js/launch.js && node --check public/assets/js/storefront.js && node --check public/assets/js/product-detail.js && node --check public/assets/js/forms.js && node --check public/brand-ui.js && node --check public/admin/admin.js && node --check public/admin/product-editor.js && node --check public/admin/mailbox.js && node --check public/admin/ui.js && node --check public/admin/drawer.js && node --check public/admin/analytics.js && node --check public/admin/subscribers.js && node --check public/assets/js/site.js && node --check dist/sw.js && node --check public/assets/js/analytics.js && node --check public/assets/js/newsletter-template.js && node --test tests/*.test.mjs",
     "db:create": "wrangler d1 create perverse-world-production",
     "db:local": "wrangler d1 migrations apply perverse-world-production --local",
     "db:remote": "wrangler d1 migrations apply perverse-world-production --remote",
@@ -20,9 +20,13 @@
     "build": "npm run check"
   },
   "devDependencies": {
+    "sharp": "^0.35.5",
     "wrangler": "^4.156.0"
   },
   "dependencies": {
     "postal-mime": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=22.14"
   }
 }

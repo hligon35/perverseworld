@@ -40,11 +40,11 @@ export async function adminAnalytics(db,period,mapProduct){
  const all=async(sql,...args)=>(await db.prepare(sql).bind(...args).all()).results;
  const [events,signups,enquiries,mail,sent,audience,products,campaigns,tracking]=await Promise.all([
   all('SELECT day,event,path,product_id,count FROM daily_analytics WHERE day BETWEEN ? AND ?',period.previousStart,period.end),
-  all('SELECT date(created_at) AS day,COUNT(*) AS count FROM subscribers WHERE created_at>=? AND created_at<date(?,\'+1 day\') GROUP BY day',period.previousStart,period.end),
+  all('SELECT date(created_at) AS day,COUNT(*) AS count FROM subscriber_events WHERE event=\'confirmed\' AND created_at>=? AND created_at<date(?,\'+1 day\') GROUP BY day',period.previousStart,period.end),
   all('SELECT date(created_at) AS day,COUNT(*) AS count FROM submissions WHERE created_at>=? AND created_at<date(?,\'+1 day\') GROUP BY day',period.previousStart,period.end),
   all('SELECT date(created_at) AS day,direction,COUNT(*) AS count FROM mailbox WHERE created_at>=? AND created_at<date(?,\'+1 day\') GROUP BY day,direction',period.previousStart,period.end),
   all('SELECT date(sent_at) AS day,COUNT(*) AS count FROM newsletter_deliveries WHERE sent_at>=? AND sent_at<date(?,\'+1 day\') GROUP BY day',period.previousStart,period.end),
-  db.prepare("SELECT COUNT(*) AS total,COALESCE(SUM(status='active'),0) AS active,COALESCE(SUM(status='unsubscribed'),0) AS unsubscribed FROM subscribers").first(),
+  db.prepare("SELECT COUNT(*) AS total,COALESCE(SUM(status='active'),0) AS active,COALESCE(SUM(status='unsubscribed'),0) AS unsubscribed,COALESCE(SUM(status='pending'),0) AS pending FROM subscribers").first(),
   all('SELECT * FROM products WHERE active=1 ORDER BY id'),
   all('SELECT n.id,n.subject,n.status,COUNT(d.subscriber_id) AS sent FROM newsletters n JOIN newsletter_deliveries d ON d.newsletter_id=n.id WHERE d.sent_at>=? AND d.sent_at<date(?,\'+1 day\') GROUP BY n.id ORDER BY sent DESC,n.id DESC LIMIT 10',period.start,period.end),
   db.prepare('SELECT MIN(day) AS started FROM daily_analytics').first()

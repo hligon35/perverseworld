@@ -43,3 +43,11 @@ assert.deepEqual(products.products.filter(product=>product.cat==='tees').map(pro
 const set=products.products.find(product=>product.id===5);
 assert.equal(set.price,45);assert.deepEqual(set.options.map(option=>option.price),[65,45]);
 console.log('Local Worker smoke checks passed: three pages, legacy redirects, trailing slashes, 404, protected admin assets/API, config and seeded D1 catalog.');
+
+for(const path of ['/sitemap.xml','/robots.txt','/llms.txt','/manifest.webmanifest','/assets/icons/favicon-32.png','/sw.js'])assert.equal((await fetch(base+path)).status,200,path);
+const badConfirmation=await fetch(base+'/newsletter/confirm?token=invalid');assert.equal(badConfirmation.status,400);assert.match(badConfirmation.headers.get('x-robots-tag'),/noindex/);
+for(const product of products.products.filter(product=>product.slug)){
+ const html=await (await fetch(base+'/shop/'+product.slug)).text(),graph=JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]),page=graph['@graph'].find(item=>item['@id']==='https://perverseworld.com/shop/'+product.slug+'#page');
+ const offers=product.options?page.mainEntity.itemListElement.map(item=>item.item.offers):[page.mainEntity.offers];assert.deepEqual(offers.map(offer=>Number(offer.price)),(product.options||[product]).map(item=>item.price));
+}
+console.log('Discovery, app icons, private token pages and live product search prices verified.');

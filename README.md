@@ -1,6 +1,6 @@
 # Perverse World
 
-Branded multi-page streetwear storefront, AlphaZoneLabs admin shell, Cloudflare Worker and Expo hybrid app.
+Branded multi-page streetwear storefront, protected admin dashboard, Cloudflare Worker and Expo hybrid app.
 
 ## Public pages
 
@@ -15,7 +15,7 @@ Pages share the original visual identity and original product photography, extra
 
 The storefront has three main pages, with individual product pages under `/shop/`. Header and footer components share Home, Shop and Contact navigation; desktop shows links and mobile shows a hamburger menu. The brand story lives on Home at `/#story`. Previous `/about` links redirect there, while `/collections` and its former category pages redirect to `/shop`, where category filters remain available. Storefront buttons have no arrow glyphs, and Instagram links have been removed.
 
-Visitors first see the coming-soon landing screen on each storefront route. Clicking or tapping the mushroom cloud on the original logo seven times within a rolling five-second window reveals the site. Entry persists in session storage across Home, Shop, Contact and refreshes; if browser storage is unavailable, entry still works on the current page. Catalog API requests and Turnstile widgets start after entry. This launch reveal is a browser interaction, not an authorization mechanism; admin documents and APIs retain Cloudflare Access protection independently. Home and Shop navigation icons are rendered in the shared components, with consistent footer icon and label alignment.
+Visitors first see the coming-soon landing screen on each storefront route. Clicking or tapping the mushroom cloud on the original logo seven times within a rolling five-second window reveals the site. Entry persists in session storage across Home, Shop, Contact and refreshes; if browser storage is unavailable, entry still works on the current page. The landing page has its own newsletter form and Turnstile widget. Catalog requests and storefront form widgets start after entry. This launch reveal is a browser interaction, not an authorization mechanism; admin documents and APIs retain Cloudflare Access protection independently. Home and Shop navigation icons are rendered in the shared components, with consistent footer icon and label alignment.
 
 ## Development
 
@@ -26,9 +26,9 @@ npm run db:local
 npm run dev
 ```
 
-`npm run build` generates three main pages and four complete product pages in `dist/`, copies shared assets and the protected admin UI, checks JavaScript and runs the test suite. It requires only Node.js; no frontend framework or browser rendering is needed. Product cards, navigation, titles, prices and descriptions are present before JavaScript runs. Client code enhances catalog filtering, product galleries, item selection, live products, the bag and verified forms; it never switches pages by hiding unrelated sections.
+`npm run build` generates three main pages and four complete product pages in `dist/`, copies shared assets and the protected admin UI, checks JavaScript and runs the test suite. It requires Node.js 22.14 or newer and installed build dependencies, including Sharp for deterministic icon generation; no frontend framework or browser rendering is needed. Product cards, navigation, titles, prices and descriptions are present before JavaScript runs. Client code enhances catalog filtering, product galleries, item selection, live products, the bag and verified forms; it never switches pages by hiding unrelated sections.
 
-With the local Worker running and the local migration applied, `npm run smoke` checks direct URLs, trailing-slash redirects, 404 responses, protected admin/API paths and the seeded catalog. `npm run mobile:check` checks the retained Expo wrapper's syntax. Install the mobile workspace dependencies separately for an Expo simulator or device build; a native device build is not part of the static web build.
+With the local Worker running and the local migration applied, `npm run smoke` checks direct URLs, trailing-slash redirects, 404 responses, protected admin/API paths and the seeded catalog. `npm run mobile:check` runs strict TypeScript checks for the Expo Router wrapper. Use `npm ci` to install all workspaces for an Expo simulator or device build; a native device build is not part of the static web build.
 
 Cloudflare Workers Builds should use `npm ci --workspaces=false` as its install command and `npm run build` as its build command. Static output is `dist/`, as configured in `wrangler.toml`. Ordinary static hosting can also serve these generated files when configured to resolve `/shop` to `shop.html` and other extensionless paths similarly; API/admin security requires the Worker. Workers assets use `html_handling = "drop-trailing-slash"` and a genuine 404 document. There is no SPA fallback or index rewrite.
 
@@ -41,7 +41,7 @@ Before deployment, verify:
 - Actual D1 database ID and applied production migrations.
 - Cloudflare Access application/policy covering `/admin*` and `/api/admin/*`, matching JWT issuer/audience and admin email allowlist. Worker authentication remains required for all admin documents and assets, even on workers.dev.
 - Turnstile public key, Worker secret `TURNSTILE_SECRET`, widget hostnames `perverseworld.com` and `www.perverseworld.com`, and both action names.
-- Worker secret `RESEND_API_KEY`, verified outbound sender/domain, and inbound Email Routing to the Worker's email handler.
+- Worker secret `RESEND_API_KEY`, verified outbound sender/domain, and the signed Resend receiving webhook. Preserve the existing Resend MX records.
 - Both custom domains/DNS bindings and the Workers Builds connection to **hligon35/perverseworld**, branch `main`.
 
 Use `npm run deploy` as the connected deployment command. Wrangler's custom build also runs the guard when Cloudflare sets `WORKERS_CI=1`, blocking even the default Workers Builds deployment command until verification is acknowledged. The [Cloudflare build environment documentation](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#default-variables) describes this variable. Disable any other automatic release pipelines until configuration is verified. Direct local `wrangler deploy` bypasses the npm deployment guard and must not be used before verification. The acknowledgement below records the operator's remote verification; the guard itself does not inspect Cloudflare account state. Do not commit secrets.
@@ -71,7 +71,7 @@ The bag's **Ask about your bag** action opens Contact with an order enquiry and 
 - `src/site/routes.js` — route metadata used during generation
 - `src/site/products.json` — preview catalog and original image references
 - `src/site/catalog-policy.js` — retired product IDs and the fixed World Logo Hoodie homepage feature
-- `scripts/build.mjs` — dependency-free static generator; `dist/` is ignored and rebuilt cleanly
+- `scripts/build.mjs` — static generator; `dist/` is ignored and rebuilt cleanly
 - `public/assets/css/` — original design, page layouts and form styles
 - `public/assets/js/` — catalog/bag behavior and live API/Turnstile integration
 - `public/assets/images/` — original logo and four available product images
@@ -79,7 +79,7 @@ The bag's **Ask about your bag** action opens Contact with an order enquiry and 
 - `public/admin/` — AlphaZoneLabs-style protected admin UI
 - `src/worker.js` — public routes, protected APIs and email integration
 - `migrations/` — D1 schema
-- `apps/mobile/` — Expo shell
+- `apps/mobile/` — TypeScript Expo Router wrapper
 
 Official repository: **hligon35/perverseworld** (no dash).
 
@@ -127,3 +127,31 @@ Open **Analytics** in the drawer (`/admin/#analytics`). The Access-protected `/a
 Apply `0005_analytics.sql` before release. Browser activity posts to **public** `/api/analytics`; Cloudflare Access must allow that endpoint without a sign-in challenge. The public collector accepts only small, same-origin requests for allowlisted storefront routes and event types. Product IDs must refer to active, non-retired products. Each request increments one server-dated aggregate counter in D1. No analytics cookies, visitor IDs, names, email addresses, query strings, referrers or IP addresses are stored in the analytics table. The browser honors Do Not Track and Global Privacy Control. Collection failures never block browsing or bag actions.
 
 Page views include the coming soon screen. Store entries count successful gate reveals; restored sessions are not counted again as new entries. Bag enquiries count the click through to the contact form; actual contact enquiries count saved form submissions separately. Browser-reported activity is not a unique-visitor count and can be affected by blocked scripts or artificial requests. Traffic starts at release and cannot be backfilled. Existing enquiry, subscriber and email records are included immediately. Campaign sends mean accepted by the provider, not confirmed delivery; open rates, completed orders and revenue are not recorded. The daily chart has an accessible figures table and honest empty states.
+
+
+## Customer email lifecycle and conversion funnel
+
+The coming-soon screen retains the seven-click logo reveal and now offers newsletter sign-up before entry. Subscribers receive a branded confirmation email, explicitly confirm on a branded page, then receive a welcome email. An owner notification goes to `NOTIFICATION_EMAIL` (default `info@perverseworld.com`). Pending subscribers are excluded from campaigns. Existing active subscribers retain their recorded consent. Confirmation links expire after 24 hours; repeated pending requests have a five-minute cooldown. Resubscribing after opting out requires a fresh confirmation and invalidates old links. Email-link scanners cannot activate or unsubscribe users with a GET request; one-click unsubscribe POSTs are supported for email clients.
+
+Contact submissions are saved with a unique request key and a customer-visible PW reference. The branded auto-reply includes that reference, the message and a reply-to address. The owner notification includes the sender's details and a link to submissions. Exact browser retries do not create duplicate submissions or emails. Turnstile, origin checks and honeypot protection remain enforced; contact requests are also limited per email. Customers can use the visible direct email alternative if verification is unavailable.
+
+Migration `0006_customer_messages.sql` adds the durable email outbox and consent events. Message creation and notification enqueueing are atomic D1 transactions. Delivery runs immediately in `waitUntil` and retries every five minutes through the Worker cron. Atomic leases prevent concurrent dispatch; Resend idempotency keys prevent duplicates inside the provider's 24-hour window. Six automatic attempts use backoff, and retries stop before that window expires. Messages queued while credentials are absent remain saved. Expired confirmations and opted-out/version-changed recipients are cancelled. Sent/cancelled payloads are cleared to remove unnecessary copies of message bodies and bearer links. Failed messages needing review remain visible. No messages are sent by previewing a template.
+
+Admin **Subscribers** supports search, status filters, pagination, confirmation resends and unsubscribing. **Email delivery** shows queued/sent/failed state, attempts and safe error summaries, with a retry control. Only allowlisted Access identities can use these controls. Analytics counts actual confirmation events without rewriting historical sign-up counts when someone rejoins.
+
+### Required production configuration
+
+- Worker secrets: `TURNSTILE_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`.
+- Verified Resend sending domain for `updates@perverseworld.com` and `info@perverseworld.com`; full-access key for receiving APIs.
+- Public routes must bypass Cloudflare Access: `/api/config`, `/api/products`, `/api/newsletter/subscribe`, `/api/submissions`, `/api/analytics`, `/api/webhooks/resend`, `/newsletter/confirm`, `/unsubscribe`, public pages and product media. Keep `/admin*` and `/api/admin/*` protected.
+- Resend receiving webhook remains `https://perverseworld.com/api/webhooks/resend`, with the `email.received` event. Cron processes the outbox; it does not send unsolicited campaigns.
+
+## Discovery, icons and app behavior
+
+The supplied `public/assets/images/perverseIcon.png` remains the source for native and web app icons. Build generates 32px favicon, 180px Apple icon and 192/512px install icons without changing the original. Public pages include a web manifest. Copyright uses the build year and refreshes in the browser when the page becomes visible again; sent email and confirmation-page years are generated server-side.
+
+The sitemap is generated from the three main routes and four product routes, including product imagery and excluding private/token URLs and retired routes. Canonical URLs, social cards, organization/site/breadcrumb schema and truthful product offers are generated together. Product pages refresh visible details and structured prices from D1 in the Worker so admin edits do not leave stale search prices. No reviews, shipping promises or stock availability claims are fabricated. Robots excludes private areas; `llms.txt` exposes only public brand/catalog facts. The coming-soon gate is intentionally preserved and continues to limit ordinary storefront discovery until launch. SEO and AI discoverability are supported, not guaranteed rankings or citations.
+
+Font requests use early connections instead of CSS imports. Images use asynchronous decoding, deferred hidden-store loading and priority for the visible landing logo. The service worker caches only a branded offline shell and its assets: no HTML catalog snapshots, API responses, admin pages, personal data or token pages. Offline forms do not queue customer messages or claim success.
+
+The Expo app uses Router and strict TypeScript, SDK-compatible dependencies, safe areas and error/retry states. One WebView remains mounted across Home, Shop and Contact to preserve the session bag. Admin opens in the system browser for Cloudflare/Google sign-in; external links use the system browser and unsupported URL schemes are rejected. Verify with `npm run mobile:check` and `npx expo export --platform android` from `apps/mobile`. Native signing/install requires the normal device/EAS workflow and is separate from the static web release.

@@ -87,12 +87,12 @@ test('forms mount only existing challenges, send matching tokens, and reset afte
     form.querySelector=()=>button;form.reset=()=>{};
     const ids=action==='contact'?{contactForm:form,'contact-status':status,'contact-challenge':mount}:{signup:form,signupMsg:status,'newsletter-challenge':mount,email:{value:'test@example.com'}};
     const context={URLSearchParams,window:{PWStore:{updateCatalog(){}},turnstile:{render(el,config){assert.equal(el,mount);options=config;return 0;},reset(){resets++;}}},
-      FormData:class{*[Symbol.iterator](){yield ['message','Hello'];}},console,
+      crypto,FormData:class{*[Symbol.iterator](){yield ['message','Hello'];yield ['email','test@example.com'];}},console,
       document:{getElementById:id=>ids[id],createElement:()=>({}),head:{append:el=>script=el}},
       fetch:async(path,opt)=>{if(path==='/api/config')return Response.json({turnstileSiteKey:'public'});if(path==='/api/products')return Response.json({products:[]});posted=JSON.parse(opt.body);return Response.json({ok:true});}
     };
     vm.runInNewContext(forms,context);
-    await new Promise(resolve=>setImmediate(resolve));script.onload();
+    await new Promise(resolve=>setImmediate(resolve));if(script)script.onload();
     assert.equal(options.action,action);assert.equal(button.disabled,true);
     options.callback('verified-token');assert.equal(button.disabled,false);
     await form.onsubmit({preventDefault(){}});
@@ -112,6 +112,13 @@ test('catalog and Turnstile stay idle until the launch gate opens',async()=>{
   };
   vm.runInNewContext(forms,context);assert.equal(calls,0);
   await entered();assert.equal(calls,1);
+});
+
+test('landing signup verifies before entry while catalog and hidden home signup wait for the gate',async()=>{
+ let entered;const calls=[],mounted=[],launch=element(),home=element(),launchButton=element(),homeButton=element();launch.querySelector=()=>launchButton;home.querySelector=()=>homeButton;
+ const launchChallenge={},homeChallenge={},nodes={launchGate:{},launchSignup:launch,signup:home,'launch-newsletter-challenge':launchChallenge,'newsletter-challenge':homeChallenge,launchSignupMsg:element(),signupMsg:element()};
+ const context={URLSearchParams,window:{PWLaunch:{isOpen:()=>false},PWStore:{updateCatalog(){}},turnstile:{render(target,options){mounted.push({target,options});return mounted.length;}}},document:{getElementById:id=>nodes[id],addEventListener(name,callback){assert.equal(name,'pw:entered');entered=callback;}},fetch:async path=>{calls.push(path);return Response.json(path==='/api/config'?{turnstileSiteKey:'test'}:{products:[]});}};
+ vm.runInNewContext(forms,context);await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(calls,['/api/config']);assert.equal(mounted.length,1);assert.equal(mounted[0].target,launchChallenge);entered();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(calls,['/api/config','/api/products']);assert.equal(mounted.length,2);assert.equal(mounted[1].target,homeChallenge);assert.equal(mounted[1].options.action,'newsletter');
 });
 
 test('bag enquiries populate the contact form without sending anything',()=>{

@@ -1,0 +1,25 @@
+const base='https://perverseworld.com';
+const absolute=path=>/^https:\/\//.test(path)?path:base+path;
+const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function pageGraph(route,products){
+ const product=products.find(item=>route.path==='/shop/'+item.slug);
+ const org={'@type':'Organization','@id':base+'/#organization',name:'Perverse World',url:base,logo:base+'/assets/images/perverseIcon.png',email:'info@perverseworld.com'};
+ const graph=[org,{'@type':'WebSite','@id':base+'/#website',url:base,name:'Perverse World',publisher:{'@id':org['@id']}}];
+ const page={'@type':product?.options?'CollectionPage':route.page==='contact'?'ContactPage':route.page==='shop'?'CollectionPage':'WebPage','@id':base+route.path+'#page',url:base+route.path,name:route.title,description:route.description,isPartOf:{'@id':base+'/#website'}};graph.push(page);
+ const productSchema=(item,url)=>({'@type':'Product',name:item.name,description:item.sub,image:(item.images?.length?item.images:[{src:item.img}]).map(view=>absolute(view.src)),brand:{'@type':'Brand',name:'Perverse World'},url,offers:{'@type':'Offer',url,priceCurrency:'USD',price:item.price.toFixed(2)}});
+ if(product){page.mainEntity=product.options?{'@type':'ItemList',itemListElement:product.options.map((item,index)=>({'@type':'ListItem',position:index+1,item:productSchema(item,base+route.path+'?item='+item.id)}))}:productSchema(product,base+route.path);}
+ else if(route.page==='shop')page.mainEntity={'@type':'ItemList',itemListElement:products.map((item,index)=>({'@type':'ListItem',position:index+1,name:item.name,url:base+'/shop/'+item.slug}))};
+ const crumbs=[{name:'Home',url:base+'/'}];if(route.path!=='/')crumbs.push({name:product?'Shop':route.page==='shop'?'Shop':'Contact',url:base+(product?'/shop':route.path)});if(product)crumbs.push({name:product.name,url:base+route.path});
+ graph.push({'@type':'BreadcrumbList',itemListElement:crumbs.map((item,index)=>({'@type':'ListItem',position:index+1,name:item.name,item:item.url}))});
+ return {'@context':'https://schema.org','@graph':graph};
+}
+export function seoHead(route,products){
+ const product=products.find(item=>route.path==='/shop/'+item.slug),image=absolute(product?.img||'/assets/images/perverse-world-logo.jpeg');
+ const structured=JSON.stringify(pageGraph(route,products)).replace(/</g,'\\u003c');
+ return `<meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:site_name" content="Perverse World"><meta property="og:type" content="website"><meta property="og:title" content="${escape(route.title)}"><meta property="og:description" content="${escape(route.description)}"><meta property="og:url" content="${base+route.path}"><meta property="og:image" content="${image}"><meta property="og:image:alt" content="${escape(product?.name||'Perverse World')}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(route.title)}"><meta name="twitter:description" content="${escape(route.description)}"><meta name="twitter:image" content="${image}"><script type="application/ld+json">${structured}</script>`;
+}
+export function sitemap(routes,products){
+ const pages=[...routes.map(route=>({path:route.path,images:[]})),...products.map(product=>({path:'/shop/'+product.slug,images:[...new Set([...(product.images||[]),...(product.options||[]).flatMap(option=>option.images||[])].map(view=>view.src))]}))];
+ return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'+pages.map(page=>`<url><loc>${base+page.path}</loc>${page.images.map(image=>`<image:image><image:loc>${base+escape(image)}</image:loc></image:image>`).join('')}</url>`).join('\n')+'\n</urlset>\n';
+}
+export function llmsText(products){return '# Perverse World\n\nIndependent streetwear built around original artwork and the contrasts beneath everyday life. The storefront is currently coming soon; newsletter sign-up is available on the landing page.\n\n## Public pages\n- [Home and newsletter sign-up](https://perverseworld.com/): Brand story, featured World Logo Hoodie and email updates.\n- [Shop](https://perverseworld.com/shop): Current apparel catalog.\n- [Contact](https://perverseworld.com/contact): Product, sizing and collaboration enquiries.\n\n## Products\n'+products.map(product=>`- [${product.name}](${base}/shop/${product.slug}): ${product.sub}.`).join('\n')+'\n\nPrices are in USD. The World Logo listing offers the hoodie and sweatpants as separately priced pieces. Use the product pages and public catalog API for current prices and stock. Orders and availability are handled by enquiry; there is no online payment checkout. Do not infer shipping terms, return policies, reviews, discounts or release dates.\n\n## Machine-readable sources\n- [Catalog](https://perverseworld.com/api/products)\n- [Sitemap](https://perverseworld.com/sitemap.xml)\n\n## Private areas\nAdmin pages, customer messages, subscriber records, authentication links and admin APIs are private.\n';}

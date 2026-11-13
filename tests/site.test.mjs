@@ -25,7 +25,7 @@ test('all routes contain complete, distinct static content without page-switchin
     assert.equal(html.includes('id="signup"'),route.page==='home');
     assert.equal(html.includes('id="story"'),route.page==='home');
     assert.doesNotMatch(html,/instagram|[↗→←↑]|href="\/(?:about|collections)/i);
-    assert.doesNotMatch(html,/concept|preview|demo|placeholders|not a live store|WORLD<\/span>_/i);
+    assert.doesNotMatch(html.replace(/<head>[\s\S]*?<\/head>/,''),/concept|preview|demo|placeholders|not a live store|WORLD<\/span>_/i);
     assert.match(html,/<div id="storefront" hidden>/);
     assert.match(html,/id="launchCloud"/);
     for(const label of ['Main navigation','Mobile navigation','Footer navigation']){

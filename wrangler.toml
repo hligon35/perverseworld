@@ -9,7 +9,7 @@ command = "node scripts/prepare-worker.mjs"
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-run_worker_first = ["/api/*", "/admin", "/admin/*", "/unsubscribe", "/media/*", "/about", "/about/*", "/collections", "/collections/*"]
+run_worker_first = ["/api/*", "/admin", "/admin/*", "/unsubscribe", "/newsletter/confirm", "/media/*", "/shop/*", "/about", "/about/*", "/collections", "/collections/*"]
 html_handling = "drop-trailing-slash"
 not_found_handling = "404-page"
 
@@ -41,7 +41,11 @@ INBOUND_DOMAIN = "perverseworld.com"
 FROM_EMAIL = "updates@perverseworld.com"
 MAILBOX_FROM_EMAIL = "info@perverseworld.com"
 INBOUND_ADDRESS = "info@perverseworld.com"
+NOTIFICATION_EMAIL = "info@perverseworld.com"
 CLOUDFLARE_CONFIGURATION_VERIFIED = "true"
+
+[triggers]
+crons = ["*/5 * * * *"]
 
 [observability.logs]
 enabled = true
@@ -53,6 +57,3 @@ persist = true
 enabled = true
 head_sampling_rate = 1
 persist = true
-
-[observability.issue_detection]
-enabled = true

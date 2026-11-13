@@ -1,7 +1,7 @@
 import {$,el,api,safe} from './ui.js';
 let report=null,requestId=0;
 const number=value=>new Intl.NumberFormat('en-US').format(value||0);
-const labels={views:'Page views',entries:'Store entries',bagAdds:'Bag additions',bagEnquiries:'Bag enquiries',signups:'Newsletter sign-ups',enquiries:'Contact enquiries',inbound:'Incoming emails',outbound:'Replies sent',campaignEmails:'Campaign emails sent'};
+const labels={views:'Page views',entries:'Store entries',bagAdds:'Bag additions',bagEnquiries:'Bag enquiries',signups:'Confirmed sign-ups',enquiries:'Contact enquiries',inbound:'Incoming emails',outbound:'Replies sent',campaignEmails:'Campaign emails sent'};
 const date=value=>new Date(value+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
 function table(target,rows,columns,empty){const body=$(target);body.replaceChildren();if(!rows.length){const row=el('tr'),cell=el('td',empty,'empty');cell.colSpan=columns.length;row.append(cell);body.append(row);return;}for(const item of rows){const row=el('tr');for(const column of columns)row.append(el('td',column(item)));body.append(row);}}
 function chart(){
@@ -21,7 +21,7 @@ export async function analytics(){
   table('analyticsCampaignRows',result.campaigns,[item=>item.subject,item=>item.status,item=>number(item.sent)],'No campaign emails sent in this period.');
   const stock=result.inventory;$('analyticsStockUnits').textContent=number(stock.units);$('analyticsStockProducts').textContent=number(stock.activeProducts);$('analyticsStockLow').textContent=number(stock.low);$('analyticsStockOut').textContent=number(stock.soldOut);
   table('analyticsStockRows',stock.attention,[item=>item.name,item=>item.size,item=>item.quantity===0?'Sold out':number(item.quantity)],'All listed sizes have more than five units available.');
-  $('analyticsAudienceActive').textContent=number(result.audience?.active);$('analyticsAudienceTotal').textContent=number(result.audience?.total);$('analyticsAudienceUnsubscribed').textContent=number(result.audience?.unsubscribed);
+  $('analyticsAudienceActive').textContent=number(result.audience?.active);$('analyticsAudiencePending').textContent=number(result.audience?.pending);$('analyticsAudienceTotal').textContent=number(result.audience?.total);$('analyticsAudienceUnsubscribed').textContent=number(result.audience?.unsubscribed);
   $('analyticsTrackingNote').textContent=result.trackingStarted?'Traffic recorded since '+date(result.trackingStarted)+'. Page views include the coming soon screen. Counts reflect browser-reported activity, not unique visitors.':'Traffic tracking starts when this update is released. Earlier page views cannot be reconstructed. Existing enquiry and email records are included.';
   $('analyticsStatus').textContent=date(result.period.start)+' – '+date(result.period.end)+' · UTC days · Updated '+new Date(result.generatedAt).toLocaleTimeString();chart();
  }catch(error){if(id===requestId){$('analyticsStatus').textContent='Analytics could not be loaded. Use Refresh to try again.';throw error;}}finally{if(id===requestId)root.setAttribute('aria-busy','false');}

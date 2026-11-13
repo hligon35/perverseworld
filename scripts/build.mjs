@@ -1,5 +1,8 @@
 import {cp, mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {routes} from '../src/site/routes.js';
+import {seoHead,sitemap,llmsText} from '../src/site/seo.js';
+import {buildIcons} from './icons.mjs';
+import {createHash} from 'node:crypto';
 import {retiredProductIds,homeProductId,homeOptionId} from '../src/site/catalog-policy.js';
 
 export const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,7 +14,7 @@ const fill = (template, values) => template.replace(/{{(\w+)}}/g, (_, key) => {
   return values[key];
 });
 const products=JSON.parse(await read('src/site/products.json'));
-const component=async(name,values={})=>fill(await read(`src/site/components/${name}.html`),values);
+const component=async(name,values={})=>fill(await read(`src/site/components/${name}.html`),{year:new Date().getFullYear(),...values});
 const navigation=[['Home','/'],['Shop','/shop'],['Contact','/contact']];
 // Only remove the fixed generated directory inside this checkout, never a supplied path.
 const output = new URL('dist/',root);
@@ -19,6 +22,7 @@ if(output.href!==root.href+'dist/')throw Error('Unexpected output directory');
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 await cp(new URL('public/',root),new URL('dist/',root),{recursive:true});
+await buildIcons(root);
 await write('dist/admin/index.html',(await read('public/admin/index.html')).replace('<!-- admin-analytics -->',await read('src/site/components/admin-analytics.html')));
 await write('dist/assets/js/catalog.js',`// Generated from src/site/products.json and catalog-policy.js.\nwindow.PW_CATALOG = ${JSON.stringify(products)};\nwindow.PW_CATALOG_CONFIG = ${JSON.stringify({retiredProductIds,homeProductId,homeOptionId})};\n`);
 
@@ -28,10 +32,11 @@ const navigationHTML=route=>{
 };
 async function writePage(route,content){
  const nav=navigationHTML(route);
- const layout=fill(await read('src/site/layout.html'),{
+ let layout=fill(await read('src/site/layout.html'),{
   ...Object.fromEntries(Object.entries(route).map(([k,v])=>[k,escapeHTML(v)])),
-  header:await component('header',{navigation:nav}),footer:await component('footer',{navigation:nav}),bag:await component('bag'),launch:await component('launch'),content
+  seo:seoHead(route,products),header:await component('header',{navigation:nav}),footer:await component('footer',{navigation:nav}),bag:await component('bag'),launch:await component('launch'),content
  });
+ layout=layout.replace(/<img\b([^>]+)>/g,(tag,attrs)=>{if(!/decoding=/.test(attrs))tag=tag.replace('>',' decoding="async">');if(!/loading=/.test(attrs)&&!/draggable=/.test(attrs))tag=tag.replace('>',' loading="lazy">');if(/draggable=/.test(attrs))tag=tag.replace('>',' fetchpriority="high" width="640" height="640">');return tag;});
  await write(`dist/${route.path==='/'?'index':route.path.slice(1)}.html`,layout);
 }
 
@@ -58,5 +63,14 @@ for(const p of products){
  const content=await component('product-detail',{id:p.id,name:escapeHTML(p.name),sub:escapeHTML(p.sub),img:escapeHTML(first.img),selectedName:escapeHTML(first.name),price:first.price.toFixed(2),options,views});
  await writePage({path:'/shop/'+p.slug,page:'product',title:p.name+' — Perverse World',description:p.sub},content);
 }
-await write('dist/404.html','<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Perverse World</title><link rel="stylesheet" href="/assets/css/storefront.css"><main class="section"><h1>OUTSIDE THIS WORLD.</h1><p>This page could not be found.</p><a class="btn" href="/">BACK HOME</a></main></html>');
+await write('dist/404.html','<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow"><link rel="icon" href="/assets/icons/favicon-32.png"><title>Page not found — Perverse World</title><link rel="stylesheet" href="/assets/css/storefront.css"><main class="section"><h1>OUTSIDE THIS WORLD.</h1><p>This page could not be found.</p><a class="btn" href="/">BACK HOME</a></main></html>');
 console.log(`Built ${routes.length} main pages and ${products.length} product pages in dist/.`);
+
+await write('dist/sitemap.xml',sitemap(routes,products));
+await write('dist/llms.txt',llmsText(products));
+await write('dist/manifest.webmanifest',JSON.stringify({id:'/',name:'Perverse World',short_name:'Perverse World',description:'Independent streetwear, original artwork and drop alerts.',start_url:'/',scope:'/',display:'standalone',orientation:'portrait',background_color:'#111210',theme_color:'#111210',icons:[{src:'/assets/icons/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},{src:'/assets/icons/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'}]},null,2));
+const offline='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="/assets/css/messages.css"><title>You’re offline — Perverse World</title></head><body><main><img src="/assets/icons/icon-192.png" width="160" height="160" alt="Perverse World"><h1>A moment outside the world.</h1><p>Reconnect to browse the latest pieces and send your message. Your bag stays in this tab.</p><a href="/">Try again</a></main></body></html>';
+await write('dist/offline.html',offline);
+const cache='pw-offline-'+createHash('sha256').update(offline+await read('public/assets/css/messages.css')).update(await readFile(new URL('public/assets/images/perverseIcon.png',root))).digest('hex').slice(0,12);
+const serviceWorker=await read('src/service-worker.js');
+await write('dist/sw.js',serviceWorker.replace("'__CACHE__'",JSON.stringify(cache)).replace('/* __PAGES__ */[]',JSON.stringify([...routes.map(route=>route.path),...products.map(product=>'/shop/'+product.slug)])));

@@ -140,7 +140,7 @@ test('Turnstile requires tokens on both public forms',async()=>{
 test('Turnstile validates hostname and purpose before database writes',async()=>{
  const original=globalThis.fetch;
  let writes=0,verifications=0;
- const env={...verificationEnv,DB:{prepare:()=>({bind(){return this},async run(){writes++;return {success:true}}})}};
+ const env={...verificationEnv,DB:{prepare:sql=>({bind(){return this},async first(){if(sql.includes('COUNT'))return {count:0};if(sql.startsWith('SELECT id FROM submissions'))return {id:1};return null;},async run(){writes++;return {success:true,meta:{changes:1,last_row_id:1}};}}),async batch(statements){return Promise.all(statements.map(statement=>statement.run()));}}};
  try{
   globalThis.fetch=async()=>{verifications++;return Response.json({success:true,hostname:'malicious.example',action:'newsletter'})};
   assert.equal((await worker.fetch(signup('fake-token'),env)).status,403);
@@ -154,6 +154,6 @@ test('Turnstile validates hostname and purpose before database writes',async()=>
   assert.equal((await worker.fetch(signup('verified-token'),env)).status,200);
   globalThis.fetch=async()=>Response.json({success:true,hostname:'perverseworld.com',action:'contact'});
   assert.equal((await worker.fetch(contact('verified-token'),env)).status,200);
-  assert.equal(writes,2);
+  assert.equal(writes,5);
  }finally{globalThis.fetch=original}
 });

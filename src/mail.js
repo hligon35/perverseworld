@@ -12,7 +12,8 @@ export async function importResendEmail(env,id){
  if(!Array.isArray(email.to)||!email.to.some(recipient=>address(recipient).toLowerCase()===to))return false;
  let body=email.text||text(email.html);
  if(email.attachments?.length)body+='\n\nAttachments: '+email.attachments.map(item=>item.filename||'Unnamed attachment').join(', ')+'\n(Attachments are not stored in this inbox.)';
- const result=await env.DB.prepare("INSERT OR IGNORE INTO mailbox(direction,sender,recipient,subject,body_text,status,external_id,provider_id,created_at) VALUES('inbound',?,?,?,?,'unread',?,?,?)").bind(address(email.from).slice(0,254),to,String(email.subject||'(no subject)').slice(0,240),body.slice(0,50000),String(email.message_id||'').slice(0,255),'resend:'+id,email.created_at?new Date(email.created_at).toISOString().replace('T',' ').replace(/\.\d{3}Z$/,''):new Date().toISOString().replace('T',' ').replace(/\.\d{3}Z$/,'')).run();
+ const replyTo=address(Array.isArray(email.reply_to)?email.reply_to[0]:email.reply_to);
+ const result=await env.DB.prepare("INSERT OR IGNORE INTO mailbox(direction,sender,recipient,subject,body_text,status,external_id,provider_id,created_at,reply_to) VALUES('inbound',?,?,?,?,'unread',?,?,?,?)").bind(address(email.from).slice(0,254),to,String(email.subject||'(no subject)').slice(0,240),body.slice(0,50000),String(email.message_id||'').slice(0,255),'resend:'+id,email.created_at?new Date(email.created_at).toISOString().replace('T',' ').replace(/\.\d{3}Z$/,''):new Date().toISOString().replace('T',' ').replace(/\.\d{3}Z$/,''),/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo)?replyTo.slice(0,254):'').run();
  return result.meta.changes>0;
 }
 export async function verifyResendWebhook(request,env){

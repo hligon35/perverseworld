@@ -11,7 +11,7 @@ test('admin analytics combines real activity, compares periods and counts set st
   const period=analyticsPeriod('7'),queries=[];
   env.DB={prepare:sql=>({bind(...args){queries.push({sql,args});return this;},async first(){if(sql.includes('MIN(day)'))return {started:period.previousStart};return {total:5,active:4,unsubscribed:1};},async all(){
    if(sql.includes('FROM daily_analytics'))return {results:[{day:period.previousStart,event:'page_view',path:'/',product_id:0,count:4},{day:period.end,event:'page_view',path:'/shop',product_id:0,count:8},{day:period.end,event:'add_to_bag',path:'/shop',product_id:5,count:2}]};
-   if(sql.includes('FROM subscribers'))return {results:[{day:period.end,count:3},{day:period.previousStart,count:1}]};
+   if(sql.includes('FROM subscriber_events'))return {results:[{day:period.end,count:3},{day:period.previousStart,count:1}]};
    if(sql.includes('FROM submissions'))return {results:[{day:period.end,count:2}]};
    if(sql.includes('FROM mailbox'))return {results:[{day:period.end,direction:'inbound',count:1},{day:period.end,direction:'outbound',count:2}]};
    if(sql.includes('FROM newsletter_deliveries'))return {results:[{day:period.end,count:2}]};
@@ -50,6 +50,14 @@ test('product uploads require Access, validate content, preserve bytes and serve
  });
 });
 
+test('admin mailbox replies use branding and preserve threading while addressing the selected customer',async()=>{
+ await signedAdmin(async(env,request)=>{
+  let payload;env.RESEND_API_KEY='test';env.MAILBOX_FROM_EMAIL='info@perverseworld.com';env.DB={prepare:()=>({bind(){return this;},async first(){return {external_id:'<customer-message@example.com>'};},async run(){return {meta:{changes:1}};}})};
+  const previous=globalThis.fetch;globalThis.fetch=async(url,options)=>String(url)==='https://api.resend.com/emails'?(payload=JSON.parse(options.body),Response.json({id:'reply-1'})):previous(url,options);
+  const response=await worker.fetch(request('/api/admin/mailbox/reply','POST',{to:'customer@example.com',subject:'Re: Sizing',body:'Hello <customer>',reply_to_id:4}),env);assert.equal(response.status,200);assert.deepEqual(payload.to,['customer@example.com']);assert.equal(payload.from,'info@perverseworld.com');assert.match(payload.html,/perverse-world-logo.png/);assert.match(payload.html,/Hello &lt;customer&gt;/);assert.equal(payload.headers['In-Reply-To'],'<customer-message@example.com>');
+ });
+});
+
 test('custom ordered galleries and option sizes survive saves and public catalog projection',async()=>{
  await signedAdmin(async(env,request)=>{
   const images=[{src:'/media/products/11111111-1111-4111-8111-111111111111.png',label:'Shop'},{src:'/assets/images/world-logo-hoodie-back.jpeg',label:'Back',optionId:'hoodie'},{src:'/assets/images/world-logo-hoodie-front.jpeg',label:'Front',optionId:'hoodie'}];
@@ -74,7 +82,7 @@ test('mailbox folders search with bound parameters and return paginated snippets
 test('newsletter delivery uses the same branded renderer as the preview and a personal unsubscribe link',async()=>{
  await signedAdmin(async(env,request)=>{
   const letter={id:1,subject:'New drop',preheader:'First access',body_html:'<h1>Wear your world</h1>'},person={id:2,email:'reader@example.com',unsub_token:'a'.repeat(48)};let delivered;
-  env.FROM_EMAIL='updates@perverseworld.com';env.RESEND_API_KEY='test-key';env.DB={prepare:sql=>({bind(){return this;},async first(){return sql.includes('FROM newsletters')?letter:{n:0};},async all(){return {results:[person]};},async run(){return {meta:{changes:1}};}})};
+  env.FROM_EMAIL='updates@perverseworld.com';env.RESEND_API_KEY='test-key';env.DB={prepare:sql=>({bind(){return this;},async first(){return sql.includes('FROM newsletters')?letter:sql.includes('SELECT status FROM subscribers')?{status:'active'}:{n:0};},async all(){return {results:[person]};},async run(){return {meta:{changes:1}};}})};
   const previous=globalThis.fetch;globalThis.fetch=async(url,options)=>String(url)==='https://api.resend.com/emails'?(delivered=JSON.parse(options.body),Response.json({id:'sent-1'})):previous(url,options);
   const response=await worker.fetch(request('/api/admin/newsletters/1/send','POST',{}),env);assert.equal(response.status,200);assert.equal((await response.json()).sent,1);assert.equal(delivered.html,newsletterTemplate({...letter,baseURL:base.PUBLIC_BASE_URL,unsubscribeURL:base.PUBLIC_BASE_URL+'/unsubscribe?token='+person.unsub_token}));assert.match(delivered.html,/perverse-world-logo.png/);assert.match(delivered.html,/First access/);assert.match(delivered.text,/Wear your world/);assert.match(newsletterTemplate({subject:'<unsafe>'}),/&lt;unsafe&gt;/);
  });
@@ -82,9 +90,9 @@ test('newsletter delivery uses the same branded renderer as the preview and a pe
 
 test('Cloudflare mail ingestion decodes MIME subjects and base64 text, rejecting other recipients',async()=>{
  let values;const env={...base,DB:{prepare:()=>({bind(...args){values=args;return this;},async run(){return {meta:{changes:1}};}})}};
- const raw='From: buyer@example.com\r\nTo: info@perverseworld.com\r\nSubject: =?UTF-8?B?SGVsbG8g8J+Riw==?=\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+Buffer.from('Hello!\nQuestion about sizes.').toString('base64');
+ const raw='From: buyer@example.com\r\nReply-To: Customer <reply@example.com>\r\nTo: info@perverseworld.com\r\nSubject: =?UTF-8?B?SGVsbG8g8J+Riw==?=\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+Buffer.from('Hello!\nQuestion about sizes.').toString('base64');
  const make=to=>({to,from:'buyer@example.com',raw:new Response(raw).body,headers:new Headers({'message-id':'<mail-1@example.com>'}),setReject(reason){this.rejected=reason;}});
- await worker.email(make('info@perverseworld.com'),env);assert.equal(values[2],'Hello 👋');assert.equal(values[3],'Hello!\nQuestion about sizes.');const rejected=make('other@perverseworld.com');await worker.email(rejected,env);assert.match(rejected.rejected,/Recipient/);
+ await worker.email(make('info@perverseworld.com'),env);assert.equal(values[2],'Hello 👋');assert.equal(values[3],'Hello!\nQuestion about sizes.');assert.equal(values[5],'reply@example.com');const rejected=make('other@perverseworld.com');await worker.email(rejected,env);assert.match(rejected.rejected,/Recipient/);
 });
 
 test('Resend receiving verifies raw signatures and timestamps, imports only info mail and deduplicates retries',async()=>{

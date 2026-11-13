@@ -3,12 +3,13 @@
   <span class="pw-kicker">REACH OUT / THE WORLD IS LISTENING</span>
   <p>Questions about drops, sizes, or collaborations? Send a message.</p>
   <form id="contactForm" method="post" action="/api/submissions">
-    <div class="pw-grid"><label>Name<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" required autocomplete="email"></label></div>
+    <div class="pw-grid"><label>Name<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" maxlength="254" required autocomplete="email"></label></div>
     <label>Subject<input name="subject" required maxlength="160"></label>
     <label>Message<textarea name="message" required maxlength="4000" rows="4"></textarea></label>
     <input name="website" class="pw-honey" tabindex="-1" aria-hidden="true" autocomplete="off">
     <div id="contact-challenge"></div>
-    <button type="submit" disabled>SEND MESSAGE</button><p id="contact-status" role="status">Questions about a piece? Contact us for details.</p>
+    <button type="submit" disabled>SEND MESSAGE</button><p id="contact-status" role="status">We’ll acknowledge your message by email.</p>
   </form>
+  <p>Prefer email? <a href="mailto:info@perverseworld.com">info@perverseworld.com</a></p>
   <noscript><p>Enable JavaScript to verify and send your message.</p></noscript>
 </div></section>

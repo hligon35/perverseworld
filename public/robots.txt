@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Allow: /api/products
+Disallow: /newsletter/
+Disallow: /unsubscribe
+
+Sitemap: https://perverseworld.com/sitemap.xml

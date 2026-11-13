@@ -22,7 +22,7 @@
     ['#reloadSubscribers','refresh',false],['#newProduct','add_circle',false],
     ['#cancelProduct','close',false],['#previewNewsletter','visibility',false]
   ];
-  const navIcons={overview:'dashboard',analytics:'monitoring',products:'inventory_2',submissions:'assignment',mailbox:'inbox',newsletter:'campaign',subscribers:'groups'};
+  const navIcons={overview:'dashboard',analytics:'monitoring',products:'inventory_2',submissions:'assignment',mailbox:'inbox',newsletter:'campaign',subscribers:'groups',notifications:'mark_email_read'};
   const goIcons={products:'add_box',newsletter:'edit_note',submissions:'fact_check',mailbox:'mail'};
   const byText=[
     [/^shop all$/i,'storefront'],[/^the collection$/i,'checkroom'],[/^our world$/i,'public'],
