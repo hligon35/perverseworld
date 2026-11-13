@@ -1,3 +1,4 @@
+import {initDrawerCollapse} from './drawer.js';
 import {editProduct,saveProduct,initProductEditor} from './product-editor.js';
 import {mailbox,initMailbox} from './mailbox.js';
 import {newsletterTemplate,defaultNewsletterBody} from '/assets/js/newsletter-template.js';
@@ -36,3 +37,5 @@ mobileDrawer.addEventListener('change',()=>drawer(false));drawer(false);
 $('adminMenu').onclick=()=>drawer(true);$('closeAdminDrawer').onclick=()=>{drawer(false);$('adminMenu').focus()};$('adminShade').onclick=()=>drawer(false);
 document.addEventListener('keydown',event=>{if(event.key==='Escape')drawer(false);if(event.key==='Tab'&&$('adminDrawer').classList.contains('open')){const nodes=[...$('adminDrawer').querySelectorAll('button,a[href]')],first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}});
 initProductEditor();initMailbox();
+
+initDrawerCollapse();

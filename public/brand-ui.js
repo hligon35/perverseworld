@@ -57,8 +57,6 @@
     const link=()=>{const a=document.createElement('a');a.href='https://alphazonelabs.com';a.target='_blank';a.rel='noopener noreferrer';a.className='pw-brand-credit';a.append(icon('code'),document.createTextNode('Designed by AlphaZoneLabs LLC'));return a};
     const storefront=document.querySelector('footer .copyright');
     if(storefront&&!storefront.querySelector('.pw-brand-credit')){const c=document.createElement('span');c.className='pw-store-credit';c.append(link());storefront.append(c)}
-    const side=document.querySelector('.sidefoot');
-    if(side&&!side.querySelector('.pw-brand-credit')){const c=document.createElement('div');c.className='pw-admin-credit';c.append(link());side.append(c)}
     const main=document.querySelector('.main .content');
     if(main&&!main.querySelector('.pw-brand-credit')){const c=document.createElement('footer');c.className='pw-admin-bottom';c.append(link());main.append(c)}
   }

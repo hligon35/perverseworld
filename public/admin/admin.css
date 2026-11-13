@@ -10,3 +10,8 @@
 
 .drawer-close.pw-icon-action{display:none!important}@media(max-width:640px){.drawer-close.pw-icon-action{display:inline-flex!important}}
 body.admin-drawer-open{overflow:hidden}
+
+.collapse-toggle{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin-bottom:20px;min-height:40px}.collapse-toggle .material-symbols-outlined{font-size:22px}.brand-mini{display:none;object-fit:contain;margin:0 auto 24px}.side .nav button .drawer-label{font-size:inherit;width:auto;text-align:left}.side .drawer-link{display:flex;align-items:center;gap:10px;min-height:44px}.side .footerlink{margin:0 0 12px}.side .logout{margin:0}.side{transition:width .2s,padding .2s}.side .nav{padding-top:8px}
+@media(min-width:641px){body.admin-nav-collapsed .side{width:80px;padding:26px 12px}body.admin-nav-collapsed .side .drawer-label,body.admin-nav-collapsed .side .brand{display:none}body.admin-nav-collapsed .brand-mini{display:block}body.admin-nav-collapsed .side .nav button.pw-icon-action,body.admin-nav-collapsed .side .drawer-link,body.admin-nav-collapsed .collapse-toggle{justify-content:center!important;padding:12px 0;gap:0}body.admin-nav-collapsed .sidefoot{padding:18px 0 0}body.admin-nav-collapsed .collapse-toggle{width:100%}body.admin-nav-collapsed .side .nav button span{width:24px;text-align:center}}
+@media(max-width:640px){.collapse-toggle{display:none!important}.side{transition:transform .2s}.side .brand{padding-top:12px;padding-bottom:20px}.brand-mini{display:none}}
+@media(prefers-reduced-motion:reduce){.side{transition:none}}

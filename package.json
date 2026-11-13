@@ -11,7 +11,7 @@
     "deploy": "npm run deploy:verify && npm run build && wrangler deploy",
     "deploy:verify": "node scripts/verify-deploy.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "check": "node scripts/build.mjs && node --check src/worker.js && node --check public/assets/js/launch.js && node --check public/assets/js/storefront.js && node --check public/assets/js/product-detail.js && node --check public/assets/js/forms.js && node --check public/brand-ui.js && node --check public/admin/admin.js && node --check public/admin/product-editor.js && node --check public/admin/mailbox.js && node --check public/admin/ui.js && node --check public/assets/js/newsletter-template.js && node --test tests/*.test.mjs",
+    "check": "node scripts/build.mjs && node --check src/worker.js && node --check public/assets/js/launch.js && node --check public/assets/js/storefront.js && node --check public/assets/js/product-detail.js && node --check public/assets/js/forms.js && node --check public/brand-ui.js && node --check public/admin/admin.js && node --check public/admin/product-editor.js && node --check public/admin/mailbox.js && node --check public/admin/ui.js && node --check public/admin/drawer.js && node --check public/assets/js/newsletter-template.js && node --test tests/*.test.mjs",
     "db:create": "wrangler d1 create perverse-world-production",
     "db:local": "wrangler d1 migrations apply perverse-world-production --local",
     "db:remote": "wrangler d1 migrations apply perverse-world-production --remote",
