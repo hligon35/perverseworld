@@ -6,6 +6,11 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import catalog from '../src/site/products.json' with {type:'json'};
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
+test('admin build includes analytics component and both protected and public analytics modules',async()=>{
+ const html=await read('dist/admin/index.html');assert.match(html,/data-page="analytics"/);assert.match(html,/data-view="analytics"/);assert.match(html,/id="analyticsRange"/);assert.doesNotMatch(html,/<!-- admin-analytics -->/);
+ for(const path of ['dist/admin/analytics.js','dist/assets/js/analytics.js'])assert.ok((await stat(new URL('../'+path,import.meta.url))).size>0,path);
+ for(const name of ['index','shop','contact'])assert.match(await read('dist/'+name+'.html'),/src="\/assets\/js\/analytics.js"/);
+});
 test('all routes contain complete, distinct static content without page-switching scripts',async()=>{
   assert.deepEqual(routes.map(route=>route.path),['/','/shop','/contact']);
   const sizes=[];

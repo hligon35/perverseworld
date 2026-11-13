@@ -3,8 +3,25 @@ import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
 import {newsletterTemplate} from '../public/assets/js/newsletter-template.js';
 import {verifyResendWebhook,importResendEmail} from '../src/mail.js';
+import {analyticsPeriod} from '../src/analytics.js';
 
 const base={PUBLIC_BASE_URL:'https://perverseworld.com',ADMIN_ACCESS_ISSUER:'https://admin-tests.cloudflareaccess.com',ADMIN_ACCESS_AUD:'test-app',ADMIN_ALLOWED_EMAILS:'owner@example.com',INBOUND_DOMAIN:'perverseworld.com',INBOUND_ADDRESS:'info@perverseworld.com'};
+test('admin analytics combines real activity, compares periods and counts set stock once per piece',async()=>{
+ await signedAdmin(async(env,request)=>{
+  const period=analyticsPeriod('7'),queries=[];
+  env.DB={prepare:sql=>({bind(...args){queries.push({sql,args});return this;},async first(){if(sql.includes('MIN(day)'))return {started:period.previousStart};return {total:5,active:4,unsubscribed:1};},async all(){
+   if(sql.includes('FROM daily_analytics'))return {results:[{day:period.previousStart,event:'page_view',path:'/',product_id:0,count:4},{day:period.end,event:'page_view',path:'/shop',product_id:0,count:8},{day:period.end,event:'add_to_bag',path:'/shop',product_id:5,count:2}]};
+   if(sql.includes('FROM subscribers'))return {results:[{day:period.end,count:3},{day:period.previousStart,count:1}]};
+   if(sql.includes('FROM submissions'))return {results:[{day:period.end,count:2}]};
+   if(sql.includes('FROM mailbox'))return {results:[{day:period.end,direction:'inbound',count:1},{day:period.end,direction:'outbound',count:2}]};
+   if(sql.includes('FROM newsletter_deliveries'))return {results:[{day:period.end,count:2}]};
+   if(sql.includes('FROM newsletters'))return {results:[{id:1,subject:'The next drop',status:'sending',sent:2}]};
+   if(sql.includes('FROM products'))return {results:[{id:5,name:'World Logo Set',description:'Set',category:'sets',price_cents:4500,image_url:'builtin:5',active:1,sizes_json:'{"M":100}',options_json:'[{"id":"hoodie","price_cents":6500,"sizes":{"M":0}},{"id":"sweats","price_cents":4500,"sizes":{"M":2}}]'}]};throw Error('Unexpected SQL '+sql);
+  }})};
+  const response=await worker.fetch(request('/api/admin/analytics?days=7'),env);assert.equal(response.status,200);const report=await response.json();assert.equal(report.current.views,8);assert.equal(report.previous.views,4);assert.equal(report.current.bagAdds,2);assert.equal(report.current.signups,3);assert.equal(report.previous.signups,1);assert.equal(report.current.enquiries,2);assert.equal(report.current.inbound,1);assert.equal(report.current.campaignEmails,2);assert.equal(report.daily.length,7);assert.equal(report.daily[0].views,0);assert.deepEqual(report.pages,[{path:'/shop',views:8}]);assert.equal(report.inventory.units,2);assert.equal(report.inventory.low,1);assert.equal(report.inventory.soldOut,1);assert.equal(report.inventory.activeProducts,1);assert.equal(report.inventory.attention[0].name,'World Logo Hoodie');assert.equal(report.products[0].name,'World Logo Set');assert.equal(report.audience.active,4);
+  assert.ok(queries.every(query=>!query.sql.includes('SELECT email')));assert.equal((await worker.fetch(request('/api/admin/analytics?days=400'),env)).status,400);assert.equal((await worker.fetch(new Request(base.PUBLIC_BASE_URL+'/api/admin/analytics'),env)).status,401);
+ });
+});
 async function signedAdmin(fn){
  const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);jwk.kid=crypto.randomUUID();
  const encode=value=>Buffer.from(JSON.stringify(value)).toString('base64url'),now=Math.floor(Date.now()/1000),input=encode({alg:'RS256',kid:jwk.kid})+'.'+encode({iss:base.ADMIN_ACCESS_ISSUER,aud:['test-app'],email:'owner@example.com',iat:now,exp:now+300});

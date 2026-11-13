@@ -19,7 +19,7 @@ function shop(storage,category='all',catalog=true,featuredId=0){
   nodes.shop.dataset.category=category;
   nodes.shop.dataset.featuredId=String(featuredId);
   if(!catalog){delete nodes.shop;delete nodes.products;delete nodes.sort;}
-  const context={window:{PW_CATALOG:products,PW_CATALOG_CONFIG:{retiredProductIds,homeOptionId}},sessionStorage:storage,setTimeout:()=>{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[],addEventListener(){}}};
+  const context={window:{PW_CATALOG:products,PW_CATALOG_CONFIG:{retiredProductIds,homeOptionId}},CustomEvent,sessionStorage:storage,setTimeout:()=>{},document:{getElementById:id=>nodes[id],querySelectorAll:()=>[],addEventListener(){},dispatchEvent(){}}};
   vm.runInNewContext(storefront,context);return {nodes,context};
 }
 test('old and API-only bags survive independent pages and refreshes',()=>{
