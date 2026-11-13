@@ -4,15 +4,14 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {WebView} from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 
-const configured=process.env.EXPO_PUBLIC_SITE_URL||'https://perverseworld.com';
-function storeOrigin(){try{const url=new URL(configured);if(url.protocol==='https:'||(__DEV__&&url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname)))return url.origin;}catch{}return 'https://perverseworld.com';}
-const ROOT=storeOrigin();
+import {useRouter} from 'expo-router';
+import {ROOT} from '../lib/site';
 const pages={home:'/',shop:'/shop',contact:'/contact'} as const;
 type Section=keyof typeof pages;
 async function openExternal(url:string){try{if(url.startsWith('https://'))await WebBrowser.openBrowserAsync(url,{toolbarColor:'#111210',controlsColor:'#f04b2c'});else if(/^(mailto|tel):/.test(url))await Linking.openURL(url);}catch{Alert.alert('Could not open the link','Please try again.');}}
 
 export function StoreScreen(){
- const browser=useRef<WebView<object>>(null),[uri,setUri]=useState(ROOT+'/'),[section,setSection]=useState<Section>('home'),[canGoBack,setCanGoBack]=useState(false),[error,setError]=useState(false);
+ const router=useRouter(),browser=useRef<WebView<object>>(null),[uri,setUri]=useState(ROOT+'/'),[section,setSection]=useState<Section>('home'),[canGoBack,setCanGoBack]=useState(false),[error,setError]=useState(false);
  const source=useMemo(()=>({uri}),[uri]);
  useEffect(()=>{const listener=BackHandler.addEventListener('hardwareBackPress',()=>{if(canGoBack){browser.current?.goBack();return true;}return false;});return ()=>listener.remove();},[canGoBack]);
  const navigate=useCallback((next:Section)=>{setError(false);setSection(next);const target=ROOT+pages[next];if(target===uri)browser.current?.injectJavaScript('window.location.assign('+JSON.stringify(target)+');true;');else setUri(target);},[uri]);
@@ -34,7 +33,7 @@ export function StoreScreen(){
     renderLoading={()=><View style={styles.loading}><ActivityIndicator color="#f04b2c" accessibilityLabel="Loading Perverse World"/></View>}/>
    {error&&<View style={styles.failure}><Text style={styles.wordmark}>A MOMENT OUTSIDE THE WORLD.</Text><Text style={styles.copy}>Check your connection and try again. Your bag stays in this browser.</Text><Pressable accessibilityRole="button" style={styles.retry} onPress={()=>{setError(false);browser.current?.reload();}}><Text style={styles.retryText}>TRY AGAIN</Text></Pressable></View>}
   </View>
-  <View style={styles.tabs} accessibilityRole="tablist">{(Object.keys(pages) as Section[]).map(tab=><Pressable key={tab} accessibilityRole="tab" accessibilityState={{selected:section===tab}} onPress={()=>navigate(tab)} style={[styles.tab,section===tab&&styles.selected]}><Text style={[styles.tabText,section===tab&&styles.active]}>{tab.toUpperCase()}</Text></Pressable>)}<Pressable accessibilityRole="button" accessibilityLabel="Open secure admin in your browser" onPress={()=>void openExternal(ROOT+'/admin/')} style={styles.tab}><Text style={styles.tabText}>ADMIN</Text></Pressable></View>
+  <View style={styles.tabs} accessibilityRole="tablist">{(Object.keys(pages) as Section[]).map(tab=><Pressable key={tab} accessibilityRole="tab" accessibilityState={{selected:section===tab}} onPress={()=>navigate(tab)} style={[styles.tab,section===tab&&styles.selected]}><Text style={[styles.tabText,section===tab&&styles.active]}>{tab.toUpperCase()}</Text></Pressable>)}<Pressable accessibilityRole="button" accessibilityLabel="Open admin" onPress={()=>router.push('/admin')} style={styles.tab}><Text style={styles.tabText}>ADMIN</Text></Pressable></View>
  </SafeAreaView>;
 }
 const styles=StyleSheet.create({screen:{flex:1,backgroundColor:'#111210'},top:{height:48,justifyContent:'center',alignItems:'center',borderBottomWidth:1,borderColor:'#34362f'},wordmark:{color:'#f2eee3',fontSize:19,fontWeight:'900',letterSpacing:1.5,textAlign:'center'},accent:{color:'#f04b2c'},web:{flex:1,backgroundColor:'#111210'},tabs:{minHeight:56,flexDirection:'row',borderTopWidth:1,borderColor:'#34362f'},tab:{flex:1,alignItems:'center',justifyContent:'center',minHeight:52},selected:{borderTopWidth:2,borderColor:'#f04b2c'},tabText:{color:'#aaa',fontSize:11,fontWeight:'800',letterSpacing:1},active:{color:'#f04b2c'},loading:{...StyleSheet.absoluteFill,alignItems:'center',justifyContent:'center',backgroundColor:'#111210'},failure:{...StyleSheet.absoluteFill,backgroundColor:'#111210',alignItems:'center',justifyContent:'center',padding:28,gap:22},copy:{color:'#c6c5ba',textAlign:'center',lineHeight:24},retry:{backgroundColor:'#f04b2c',padding:16},retryText:{color:'#111210',fontWeight:'800'},webFallback:{flex:1,justifyContent:'center',alignItems:'center',padding:28,gap:24}});

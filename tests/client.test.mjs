@@ -131,3 +131,9 @@ test('bag enquiries populate the contact form without sending anything',()=>{
   assert.equal(form.elements.subject.value,'Order enquiry');
   assert.match(form.elements.message.value,/World Logo Hoodie — Size M/);
 });
+
+test('newsletter builder composes escaped email markup from plain text',async()=>{
+  const {composeNewsletterBody}=await import('../public/assets/js/newsletter-template.js');
+  const html=composeNewsletterBody({headline:'Drop <1>',message:'First line\nsecond line\n\nNew <b>paragraph</b>'});
+  assert.equal(html.match(/<p>/g).length,2);assert.match(html,/first line|First line<br>second line/);assert.ok(!html.includes('<b>')&&html.includes('&lt;b&gt;')&&html.includes('Drop &lt;1&gt;'));
+});
