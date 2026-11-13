@@ -21,7 +21,7 @@ test('supplied Perverse icon generates small browser icons and installable web/n
  const source=await stat(new URL('../public/assets/images/perverseIcon.png',import.meta.url));
  for(const [name,size] of [['favicon-32',32],['apple-touch-icon',180],['icon-192',192],['icon-512',512]]){const path=new URL('../dist/assets/icons/'+name+'.png',import.meta.url),metadata=await sharp(await readFile(path)).metadata();assert.equal(metadata.width,size);assert.equal(metadata.height,size);assert.ok((await stat(path)).size<source.size);}
  assert.ok((await stat(new URL('../dist/assets/icons/favicon-32.png',import.meta.url))).size<source.size/30);
- const manifest=JSON.parse(await read('dist/manifest.webmanifest'));assert.equal(manifest.start_url,'/');assert.equal(manifest.display,'standalone');assert.deepEqual(manifest.icons.map(icon=>icon.sizes),['192x192','512x512']);const app=JSON.parse(await read('apps/mobile/app.json')).expo;assert.match(app.icon,/perverseIcon.png$/);assert.match(app.web.favicon,/perverseIcon.png$/);assert.ok(app.plugins.includes('expo-router'));
+ const manifest=JSON.parse(await read('dist/manifest.webmanifest'));assert.equal(manifest.start_url,'/');assert.equal(manifest.display,'standalone');assert.deepEqual(manifest.icons.map(icon=>icon.sizes),['192x192','512x512','512x512']);const app=JSON.parse(await read('apps/mobile/app.json')).expo;assert.match(app.icon,/perverseIcon.png$/);assert.match(app.web.favicon,/perverseIcon.png$/);assert.ok(app.plugins.includes('expo-router'));
 });
 test('copyright year refreshes when a page is reopened in a new year',async()=>{
  let year=2032,visible;const nodes=[{textContent:'2026'},{textContent:'2026'}];
